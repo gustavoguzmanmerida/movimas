@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sistema Movimas Pro - Nube Google Sheets & ImgBB</title>
+  <!-- Lector QR -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <!-- Librería Excel Profesional (.xlsx) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #ec4899;        /* Fucsia / Rosa moderno */
+      --primary-dark: #be185d;   /* Rosa oscuro / Magenta */
+      --secondary: #8b5cf6;      /* Violeta elegante */
+      --success: #10b981;        /* Verde esmeralda */
+      --warning: #f59e0b;        /* Ámbar */
+      --danger: #ef4444;         /* Rojo suave */
+      --bg: #fdf2f8;             /* Fondo rosado muy sutil y limpio */
+      --card: #ffffff;
+      --text: #1f2937;
+      --border: #fbcfe8;         /* Bordes tono pastel rosado */
+    }
+
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; padding: 0 0 85px 0; background-color: var(--bg); color: var(--text); }
+
+    /* NOTIFICACIONES TOAST */
+    #toastContainer {
+      position: fixed;
+      top: 15px; left: 50%; transform: translateX(-50%);
+      z-index: 10000; display: flex; flex-direction: column; gap: 8px; width: 90%; max-width: 380px; pointer-events: none;
+    }
+    .toast {
+      background: #1f2937; color: white; padding: 12px 16px; border-radius: 12px; font-size: 12px; font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25); text-align: center; border-left: 4px solid var(--primary);
+    }
+    .toast.success { border-left-color: var(--success); }
+    .toast.error { border-left-color: var(--danger); }
+    .toast.warning { border-left-color: var(--warning); }
+
+    /* PANTALLA DE LOGIN OBLIGATORIO INICIAL */
+    #sec-login {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(135deg, #be185d, #ec4899, #8b5cf6);
+      z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 16px; overflow-y: auto;
+    }
+    .login-box {
+      background: white; border-radius: 20px; padding: 22px 18px; width: 100%; max-width: 380px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.25); text-align: center; color: var(--text);
+    }
+    .splash-logo-container {
+      width: 85px; height: 85px; background: white; border-radius: 50%; display: flex; justify-content: center; align-items: center;
+      box-shadow: 0 6px 18px rgba(190, 24, 93, 0.25); margin: 0 auto 10px auto; border: 3px solid #fbcfe8; overflow: hidden;
+    }
+    .splash-logo-container img { width: 100%; height: 100%; object-fit: cover; }
+    .login-box h1 { font-size: 22px; font-weight: 900; margin: 0; color: var(--primary-dark); }
+    .login-box h2 { font-size: 11px; font-weight: 700; margin: 4px 0 14px 0; letter-spacing: 0.8px; color: #9d174d; text-transform: uppercase; }
+
+    .login-tabs { display: flex; background: #fce7f3; border-radius: 10px; padding: 3px; margin-bottom: 14px; }
+    .login-tab { flex: 1; padding: 8px 4px; font-size: 11px; font-weight: 800; border: none; background: transparent; color: #9d174d; border-radius: 8px; cursor: pointer; }
+    .login-tab.active { background: white; color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+
+    .quick-ci-chips { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 8px; }
+    .ci-chip { background: #fff5f7; border: 1px solid #fbcfe8; color: #be185d; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 12px; cursor: pointer; }
+
+    header {
+      background: linear-gradient(135deg, #be185d, #9d174d); color: white; padding: 10px 14px; position: sticky; top: 0; z-index: 100;
+      display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(190, 24, 93, 0.2);
+    }
+    .header-brand { display: flex; align-items: center; gap: 10px; }
+    .header-logo { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.8); background: white; }
+    header h1 { margin: 0; font-size: 14px; font-weight: 700; color: #fff; }
+    header p { margin: 1px 0 0 0; font-size: 10px; color: #fbcfe8; }
+    .header-actions { display: flex; align-items: center; gap: 6px; }
+    .user-mode-badge { padding: 5px 10px; border-radius: 20px; font-size: 10px; font-weight: bold; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; cursor: pointer; }
+
+    .container { padding: 12px; max-width: 650px; margin: 0 auto; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .card { background: var(--card); padding: 16px; border-radius: 14px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(236, 72, 153, 0.05); border: 1px solid var(--border); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #fce7f3; }
+    .card-header h3 { margin: 0; font-size: 14px; color: var(--primary-dark); font-weight: 700; }
+
+    label { display: block; margin-top: 10px; font-size: 11px; font-weight: 700; color: #831843; text-transform: uppercase; text-align: left; }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px; margin-top: 4px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff5f7; color: var(--text); outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+
+    .subtabs { display: flex; background: #fce7f3; border-radius: 10px; padding: 3px; margin-bottom: 14px; }
+    .subtab { flex: 1; padding: 8px 4px; text-align: center; font-size: 11px; font-weight: 700; color: #9d174d; border-radius: 8px; border: none; background: transparent; cursor: pointer; }
+    .subtab.active { background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .subcontent { display: none; }
+    .subcontent.active { display: block; }
+
+    .btn {
+      width: 100%; padding: 11px 12px; border: none; border-radius: 8px; color: white; font-weight: 700; margin-top: 10px; cursor: pointer; font-size: 13px;
+      display: flex; justify-content: center; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+    .btn-primary { background-color: var(--primary); }
+    .btn-secondary { background-color: var(--secondary); }
+    .btn-success { background-color: var(--success); }
+    .btn-danger { background-color: var(--danger); }
+    .btn-warning { background-color: var(--warning); }
+    .btn-whatsapp { background-color: #25d366; }
+    .btn-excel { background-color: #166534; }
+    .btn-excel-outline { background-color: #065f46; border: 1px solid #34d399; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-top: 10px; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11px; }
+    th, td { padding: 8px 6px; text-align: left; border-bottom: 1px solid #fce7f3; vertical-align: middle; }
+    th { background: #fff5f7; color: #9d174d; font-weight: 700; text-transform: uppercase; font-size: 10px; }
+
+    .semaforo-badge { padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; }
+    .semaforo-verde { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .semaforo-amarillo { background: #fef9c3; color: #a16207; border: 1px solid #fde047; }
+    .semaforo-rojo { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+
+    .status-pill { padding: 3px 6px; border-radius: 12px; font-size: 9px; font-weight: 800; display: inline-block; }
+    .status-paid { background: #dcfce7; color: #15803d; }
+    .status-pending { background: #fee2e2; color: #b91c1c; }
+
+    .summary-box { background: #fff5f7; border: 1px solid var(--border); padding: 12px; border-radius: 10px; margin-top: 10px; display: flex; justify-content: space-between; text-align: center; }
+    .summary-item { flex: 1; }
+    .summary-item h5 { margin: 0; font-size: 10px; color: #9d174d; text-transform: uppercase; }
+    .summary-item p { margin: 3px 0 0 0; font-size: 14px; font-weight: 800; }
+
+    .menu-card-movimas {
+      background: linear-gradient(135deg, #ec4899, #db2777, #be185d); color: white; border-radius: 16px; padding: 15px; margin-bottom: 10px;
+      display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 12px rgba(236, 72, 153, 0.25); cursor: pointer;
+    }
+    .menu-card-movimas.purple { background: linear-gradient(135deg, #a855f7, #8b5cf6, #7c3aed); }
+    .menu-card-movimas.rose { background: linear-gradient(135deg, #fb7185, #f43f5e, #e11d48); }
+    .menu-card-movimas.coral { background: linear-gradient(135deg, #f43f5e, #fb923c, #f59e0b); }
+    .menu-card-left { display: flex; align-items: center; gap: 14px; }
+    .menu-card-icon {
+      width: 50px; height: 50px; border-radius: 12px; background: rgba(255, 255, 255, 0.2); display: flex; align-items: center; justify-content: center; font-size: 26px; border: 1px solid rgba(255, 255, 255, 0.4); flex-shrink: 0;
+    }
+    .menu-card-info h4 { margin: 0; font-size: 15px; font-weight: 800; }
+    .menu-card-info p { margin: 3px 0 0 0; font-size: 11px; color: rgba(255,255,255,0.9); }
+
+    .avatar-mini { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid #fbcfe8; background: #fce7f3; flex-shrink: 0; }
+    .photo-upload-box { display: flex; align-items: center; gap: 12px; background: #fff5f7; padding: 10px; border-radius: 10px; border: 1px dashed var(--primary); margin-top: 6px; }
+    .photo-preview-circle { width: 58px; height: 58px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); background: white; flex-shrink: 0; }
+    .fila-scroll-wrapper { overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+
+    .nav-bottom {
+      position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: white; display: flex; border-top: 1px solid var(--border); box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 1000;
+    }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; color: #9d174d; border: none; background: none; cursor: pointer; }
+    .nav-item.active { color: var(--primary); font-weight: 700; }
+    .nav-icon { font-size: 18px; margin-bottom: 2px; }
+
+    .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.7); display: none; justify-content: center; align-items: center; z-index: 2000; padding: 10px; }
+    .modal-content { background: white; border-radius: 20px; width: 100%; max-width: 410px; text-align: left; max-height: 94vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.3); padding: 0; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #modalCarnetCredencial, #modalCarnetCredencial * { visibility: visible; }
+      #modalCarnetCredencial { position: absolute; left: 0; top: 0; width: 100%; background: white !important; }
+      .modal-content { box-shadow: none !important; border: none !important; max-width: 100% !important; }
+      .btn { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="toastContainer"></div>
+
+  <!-- PANTALLA DE LOGIN -->
+  <div id="sec-login">
+    <div class="login-box">
+      <div class="splash-logo-container">
+        <img id="loginSplashImg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23ec4899'/><text x='50' y='62' font-size='42' text-anchor='middle' fill='white' font-weight='bold'>M</text></svg>" alt="Logo Movima">
+      </div>
+      <h1>Sistema Movimas</h1>
+      <h2>Bloque Exclusivo de Chicas</h2>
+
+      <div class="login-tabs">
+        <button class="login-tab active" id="tabLoginChica" onclick="cambiarModoLogin('chica')">💃 Ingreso Danzarina</button>
+        <button class="login-tab" id="tabLoginJefa" onclick="cambiarModoLogin('jefa')">👑 Ingreso Jefa</button>
+      </div>
+
+      <div id="formLoginChica">
+        <label>Ingresa tu N° de Carnet (C.I.):</label>
+        <input type="text" id="loginCarnetInput" placeholder="Ej: 1001" onkeyup="if(event.key==='Enter') iniciarSesionConCarnet()">
+        <button class="btn btn-primary" onclick="iniciarSesionConCarnet()">Ingresar con mi Carnet</button>
+
+        <div style="margin-top: 10px;">
+          <span style="font-size: 9px; color: #9d174d; font-weight: bold;">Accesos rápidos de prueba:</span>
+          <div class="quick-ci-chips" id="chipsEjemploCarnet"></div>
+        </div>
+      </div>
+
+      <div id="formLoginJefa" style="display: none;">
+        <label>Clave Maestra de Administración:</label>
+        <input type="password" id="loginClaveJefaInput" placeholder="Introduce la contraseña" onkeyup="if(event.key==='Enter') iniciarSesionJefaDesdeLogin()">
+        <button class="btn btn-secondary" onclick="iniciarSesionJefaDesdeLogin()">👑 Entrar como Jefa de Bloque</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CABECERA -->
+  <header>
+    <div class="header-brand">
+      <img id="headerAvatarImg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23ec4899'/><text x='50' y='62' font-size='42' text-anchor='middle' fill='white' font-weight='bold'>M</text></svg>" alt="Logo" class="header-logo">
+      <div>
+        <h1 id="txtTituloHeader">Sistema Movimas</h1>
+        <p id="txtSubtituloHeader">Bloque Oficial de Chicas</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="user-mode-badge" id="badgeUsuario" onclick="solicitarAccesoJefa()" title="Cambiar a Modo Jefa">👤 Danzarina</div>
+      <div class="user-mode-badge" onclick="cerrarSesionGeneral()" title="Salir" style="background: rgba(239, 68, 68, 0.35);">🚪 Salir</div>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- 1. ASISTENCIA -->
+    <div id="sec-asistencia" class="section active">
+      <div id="cardBienvenidaDanzarina" class="card" style="display: none; background: linear-gradient(135deg, #fff5f7, #fce7f3); border: 1.5px solid var(--primary);">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <img id="bienvenidaFoto" src="" alt="Foto" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); background: white;">
+            <div>
+              <span style="font-size: 10px; font-weight: 800; color: var(--primary); text-transform: uppercase;">Sesión Iniciada</span>
+              <h3 id="bienvenidaNombre" style="margin: 2px 0; font-size: 15px; color: var(--primary-dark);">Danzarina</h3>
+              <p id="bienvenidaDetalle" style="margin: 0; font-size: 11px; color: #64748b;">Puesto N° 1 • C.I.: 0000</p>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <button onclick="abrirMiKardexLogueado()" style="background: var(--primary); color: white; border: none; padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer;">📋 Mi Kárdex</button>
+            <button onclick="abrirCarnetDigitalLogueada()" style="background: var(--secondary); color: white; border: none; padding: 6px 10px; border-radius: 8px; font-size: 10px; font-weight: 800; cursor: pointer;">🪪 Mi Carnet QR</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="menu-card-movimas coral" onclick="abrirAlbumMultimediaPublico()">
+        <div class="menu-card-left">
+          <div class="menu-card-icon">📸</div>
+          <div class="menu-card-info">
+            <h4>Álbum Multimedia para Redes (TikTok / FB)</h4>
+            <p>Sube tus fotos y videos de ensayos y recorridos</p>
+          </div>
+        </div>
+        <span style="font-size: 18px;">➔</span>
+      </div>
+
+      <div class="menu-card-movimas" onclick="abrirSeccionCalendarioPublico()">
+        <div class="menu-card-left">
+          <div class="menu-card-icon">📅</div>
+          <div class="menu-card-info">
+            <h4>Calendario Visual de Ensayos y Recorridos</h4>
+            <p>Ver cronograma en lista y cuadrícula mensual</p>
+          </div>
+        </div>
+        <span style="font-size: 18px;">➔</span>
+      </div>
+
+      <div class="menu-card-movimas purple" onclick="abrirPortalFraternoDirecto()">
+        <div class="menu-card-left">
+          <div class="menu-card-icon">🔗</div>
+          <div class="menu-card-info">
+            <h4>Enlace Fraterno (Mi Kárdex y Ranking)</h4>
+            <p id="txtSubEnlaceFraterno">Consulta tus puntos, kárdex y posición oficial</p>
+          </div>
+        </div>
+        <span style="font-size: 18px;">➔</span>
+      </div>
+
+      <div class="menu-card-movimas rose" onclick="abrirSeccionPuestosPublico()">
+        <div class="menu-card-left">
+          <div class="menu-card-icon">💃</div>
+          <div class="menu-card-info">
+            <h4>Puestos de Baile Asignados</h4>
+            <p>Ver formación del bloque en filas</p>
+          </div>
+        </div>
+        <span style="font-size: 18px;">➔</span>
+      </div>
+
+      <div id="cardAccesoAsistenciaBloqueado" class="card" style="margin-top: 14px; background: #fff5f7; border: 1px dashed var(--primary);">
+        <div class="card-header"><h3>🔒 Área Exclusiva de Control (Jefa de Bloque)</h3></div>
+        <p style="font-size: 11px; color:#64748b; margin-bottom: 10px;">El marcado oficial de asistencias se realiza desde la sesión de administración de la Jefa de Bloque.</p>
+        <button class="btn btn-secondary" onclick="solicitarAccesoJefa()">🔐 Ingresar como Jefa</button>
+      </div>
+
+      <div id="cardControlAsistenciaInicio" class="card" style="display: none; margin-top: 14px; border: 2px solid var(--success);">
+        <div class="card-header"><h3>✅ Control Oficial de Asistencias (Modo Jefa)</h3></div>
+        <label>1. Evento / Ensayo / Recorrido:</label>
+        <select id="selectEventoInicio"></select>
+        <label>2. Seleccionar Danzarina:</label>
+        <select id="selectChicaInicio"></select>
+        <label>3. Estado en Kárdex:</label>
+        <select id="selectEstadoInicio">
+          <option value="ASISTIO">🟢 Asistió (Suma puntos completos)</option>
+          <option value="PERMISO">🟡 Permiso Justificado</option>
+          <option value="FALTA">🔴 Falta Injustificada</option>
+        </select>
+        <button class="btn btn-success" onclick="guardarAsistenciaDesdeInicio()">Registrar Asistencia en Kárdex</button>
+        
+        <div style="margin-top: 15px; border-top: 1px solid #fbcfe8; padding-top: 10px;">
+          <h4 style="font-size: 12px; color: var(--primary-dark); margin: 0 0 6px 0;">📷 Escáner QR Rápido</h4>
+          <button class="btn btn-primary" onclick="iniciarEscaneoQR()">📷 Activar Cámara en Vivo</button>
+          
+          <div style="background: #fff5f7; border: 1px dashed var(--primary); padding: 8px; border-radius: 8px; margin-top: 8px; text-align: center;">
+            <p style="font-size: 10px; color: #9d174d; margin: 0 0 4px 0;">📂 O sube/fotografía el QR directamente:</p>
+            <input type="file" id="inputScanQrFile" accept="image/*" onchange="escanearQrDesdeArchivo(this)" style="font-size: 10px; padding: 4px;">
+          </div>
+
+          <div id="reader"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. COBROS -->
+    <div id="sec-cobros" class="section">
+      <div id="tabsCobrosJefa" class="subtabs" style="display: none;">
+        <button class="subtab active" id="btnTabEstado" onclick="switchSubTab('estado', this)">📑 Ver Estado</button>
+        <button class="subtab" id="btnTabCrear" onclick="switchSubTab('crear', this)">➕ Crear Cobro</button>
+        <button class="subtab" id="btnTabAbono" onclick="switchSubTab('abono', this)">💵 Abonar</button>
+      </div>
+      <div id="avisoPublicoCobros" style="background: #fce7f3; color: #9d174d; padding: 10px 14px; border-radius: 10px; font-size: 11px; margin-bottom: 12px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+        <span>👁️ <b>Consulta Pública:</b> Estado de cuentas y cuotas.</span>
+        <button onclick="solicitarAccesoJefa()" style="background: var(--primary); color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer;">👑 Gestionar</button>
+      </div>
+      <div id="sub-estado" class="subcontent active">
+        <div class="card">
+          <div class="card-header"><h3>Seleccionar Cobro a Consultar</h3><button id="btnExportExcelCobros" onclick="exportarExcelProfesional()" style="display:none; background:#166534; color:white; border:none; padding:6px 10px; border-radius:8px; font-size:10px; font-weight:800; cursor:pointer;">📊 Exportar Excel</button></div>
+          <select id="selectFiltroActividad" onchange="renderTablaEstado()"></select>
+          <div id="resumenFinancieroBox" class="summary-box">
+            <div class="summary-item"><h5>Total Esperado</h5><p id="sumTotal" style="color:#1f2937;">Bs. 0</p></div>
+            <div class="summary-item"><h5>Recaudado</h5><p id="sumPagado" style="color:var(--success);">Bs. 0</p></div>
+            <div class="summary-item"><h5>Pendiente</h5><p id="sumSaldo" style="color:var(--danger);">Bs. 0</p></div>
+          </div>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>N° / Chica</th><th>Abonado</th><th>Saldo</th><th>Estado</th></tr></thead>
+            <tbody id="tablaEstadoCuentas"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="sub-crear" class="subcontent">
+        <div class="card">
+          <div class="card-header"><h3>⚙️ Crear y Configurar Nuevo Cobro</h3></div>
+          <label>1. Concepto del Cobro:</label>
+          <input type="text" id="nuevoNombreActividad" placeholder="Ej: Polera Oficial, Rifa, Cuota">
+          <label>2. Monto a Cobrar por Chica (en Bs.):</label>
+          <input type="number" id="nuevoMontoActividad" placeholder="Ej: 50.00" step="0.50">
+          <button class="btn btn-primary" onclick="crearNuevaActividad()">Guardar y Habilitar Cobro</button>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>📋 Cobros Creados</h3></div>
+          <div id="listaCobrosConfigurados"></div>
+        </div>
+      </div>
+      <div id="sub-abono" class="subcontent">
+        <div class="card">
+          <div class="card-header"><h3>Registrar Abono</h3></div>
+          <label>Seleccionar Cobro:</label>
+          <select id="selectActividadAbono"></select>
+          <label>Seleccionar Chica:</label>
+          <select id="selectChicaAbono"></select>
+          <label>Monto Abonado (Bs.):</label>
+          <input type="number" id="montoIngresado" placeholder="0.00" step="0.50">
+          <button class="btn btn-success" onclick="guardarAbono()">Guardar Pago</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. REPORTES -->
+    <div id="sec-reportes" class="section">
+      <div class="card">
+        <div class="card-header"><h3>🏆 Ranking General de Puntos y Asistencias</h3></div>
+        <p style="font-size:11px; color:#64748b; margin-bottom: 8px;">Consulta oficial de puntuaciones, asistencias y semáforo del bloque.</p>
+        <input type="text" id="busquedaRanking" placeholder="🔍 Filtrar ranking..." oninput="renderRankingSemaforo()" style="margin-bottom:8px;">
+        <table>
+          <thead><tr><th>Puesto / Integrante</th><th>Puntos</th><th>Semáforo</th></tr></thead>
+          <tbody id="tablaRankingSemaforo"></tbody>
+        </table>
+      </div>
+      <div id="panelHistoricoAsistenciasJefa" class="card" style="display: none;">
+        <div class="card-header"><h3>📊 Histórico de Marcajes de Asistencia (Solo Jefa)</h3></div>
+        <input type="text" id="filtroReporteAsistencia" placeholder="🔍 Filtrar por nombre o fecha..." oninput="renderReportes()">
+        <table>
+          <thead><tr><th>Fecha / Actividad</th><th>Integrante</th><th>Estado</th></tr></thead>
+          <tbody id="tablaHistorialMarcajes"></tbody>
+        </table>
+      </div>
+      <div id="panelAdminReportesExtra" class="card" style="display: none; border: 1.5px dashed var(--success);">
+        <div class="card-header"><h3>👑 Exportar e Importar Excel Completo (.xlsx)</h3></div>
+        <p style="font-size: 11px; color:#64748b; margin:0 0 8px 0;">Descarga un libro Excel con pestañas separadas: Lista de Danzarines, Resumen Financiero, una tabla independiente por cada cobro, e Historial + Matriz de Asistencias con fechas.</p>
+        <button class="btn btn-excel" onclick="exportarExcelProfesional()">📊 Exportar Todo a Excel (.xlsx)</button>
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #fbcfe8;">
+          <label style="margin-top:0;">📥 Importar Datos desde Excel (.xlsx):</label>
+          <input type="file" id="inputImportarExcelReportes" accept=".xlsx,.xls" style="margin-top:4px; font-size:11px; padding:6px;">
+          <button class="btn btn-excel-outline" onclick="importarExcelProfesional('inputImportarExcelReportes')">⬆️ Cargar y Sincronizar desde Excel</button>
+        </div>
+        <button class="btn btn-danger" onclick="abrirModalConfirmarBorrado()" style="margin-top:12px;">🗑️ Borrar Historial de Asistencias</button>
+      </div>
+    </div>
+
+    <!-- 4. ADMIN / CONFIG -->
+    <div id="sec-admin" class="section">
+      <div class="card" id="cardBloqueoJefa">
+        <div class="card-header"><h3>👑 Sesión de Jefa de Bloque</h3></div>
+        <p style="font-size: 11px; color:#9d174d;">Panel exclusivo de administración y control del bloque.</p>
+        <button class="btn btn-secondary" onclick="solicitarAccesoJefa()">Ingresar Clave de Jefa</button>
+      </div>
+      <div id="panelJefaPermitido" style="display: none;">
+        
+        <!-- CONFIGURAR LOGO / FOTO DE LA JEFA -->
+        <div class="card" style="border: 1.5px solid var(--secondary);">
+          <div class="card-header"><h3>👑 Logotipo y Foto Oficial del Bloque (Jefa)</h3></div>
+          <p style="font-size: 11px; color:#64748b; margin-bottom: 8px;">Sube la foto o logo oficial que aparecerá en la pantalla de inicio y cabecera.</p>
+          <div class="photo-upload-box">
+            <img id="previewLogoJefa" src="" class="photo-preview-circle" alt="Logo actual">
+            <div style="flex: 1;">
+              <input type="file" id="inputLogoJefaFile" accept="image/*" onchange="procesarLogoJefaSubido(this)" style="padding: 6px; font-size: 11px; margin-top: 0;">
+              <p style="font-size: 10px; color: #64748b; margin: 4px 0 0 0;">Se adapta automáticamente en formato circular.</p>
+            </div>
+          </div>
+          <button class="btn btn-secondary" onclick="guardarLogoJefaOficial()" style="margin-top: 8px;">Guardar Logo Oficial</button>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>➕ Registrar Nueva Danzarina</h3></div>
+          <div class="grid-2">
+            <div><label>Nombre Completo:</label><input type="text" id="regNombreChica" placeholder="Ej: Camila Rojas"></div>
+            <div><label>N° Carnet (C.I.):</label><input type="text" id="regCarnetChica" placeholder="Ej: 1021"></div>
+          </div>
+          <div class="grid-2">
+            <div><label>Celular / WhatsApp:</label><input type="text" id="regCelularChica" placeholder="Ej: 71234567"></div>
+            <div><label>Años Antigüedad:</label><input type="number" id="regAntiguedadChica" placeholder="0" min="0" value="0"></div>
+          </div>
+          <label>📷 Foto de Perfil:</label>
+          <div class="photo-upload-box">
+            <img id="previewFotoNueva" src="" class="photo-preview-circle" alt="Vista previa">
+            <div style="flex: 1;">
+              <input type="file" id="regFotoChica" accept="image/*" onchange="procesarFotoSubida(this, 'previewFotoNueva', 'nueva')" style="padding: 6px; font-size: 11px; margin-top: 0;">
+              <p style="font-size: 10px; color: #64748b; margin: 4px 0 0 0;">Se optimiza automáticamente.</p>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="registrarNuevaDanzarina()">Guardar Integrante en el Bloque</button>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>💃 Gestión y Posiciones de Baile</h3></div>
+          <label>Diseño de Formación en Filas:</label>
+          <select id="selectTipoFila" onchange="renderPuestosAdmin()">
+            <option value="4">Filas de 4 danzarinas</option>
+            <option value="5">Filas de 5 danzarinas</option>
+            <option value="6">Filas de 6 danzarinas</option>
+            <option value="7">Filas de 7 danzarinas</option>
+            <option value="8">Filas de 8 danzarinas</option>
+          </select>
+          <div id="contenedorFilasAdmin" style="margin-top: 10px;"></div>
+          <button class="btn btn-whatsapp" onclick="compartirPuestosComoImagen()">📸 Compartir Imagen al WhatsApp</button>
+          <button class="btn btn-secondary" onclick="compartirPuestosWhatsAppTexto()" style="font-size: 11px; padding: 8px;">📝 Enviar como Texto al WhatsApp</button>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>📅 Gestión de Calendario y Eventos</h3></div>
+          <label>Nombre del Evento / Ensayo / Recorrido:</label>
+          <input type="text" id="calNombreEvento" placeholder="Ej: Ensayo General / Recorrido Oficial">
+          <label>Tipo de Evento:</label>
+          <select id="calTipoEvento">
+            <option value="ensayo">🟢 Ensayo</option>
+            <option value="recorrido">🟣 Recorrido Oficial</option>
+            <option value="importante">⭐ Actividad Importante</option>
+          </select>
+          <div class="grid-2">
+            <div><label>Fecha:</label><input type="date" id="calFechaEvento"></div>
+            <div><label>Puntos que otorga:</label><input type="number" id="calPuntosEvento" placeholder="Ej: 10" min="1" max="100"></div>
+          </div>
+          <button class="btn btn-secondary" onclick="agregarEventoCalendario()">Añadir al Calendario Oficial</button>
+          <h4 style="margin: 14px 0 6px 0; font-size: 12px; color: var(--primary-dark);">Eventos Programados:</h4>
+          <div id="listaEventosConfigurados" style="max-height: 140px; overflow-y: auto;"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>👥 Directorio, Carnets QR y Retiros</h3></div>
+          <input type="text" id="busquedaDirectorio" placeholder="🔍 Buscar por nombre o C.I..." oninput="renderDirectorioOrdenado()" style="margin-bottom: 8px;">
+          <table>
+            <thead><tr><th>Integrante / Foto / C.I.</th><th>Posición</th><th>Acciones / Carnet</th></tr></thead>
+            <tbody id="tablaDirectorioOrdenado"></tbody>
+          </table>
+        </div>
+
+        <div class="card" style="border: 1.5px solid #166534;">
+          <div class="card-header"><h3>📊 Gestión Integral en Excel (.xlsx)</h3></div>
+          <p style="font-size: 11px; color:#64748b; margin:0 0 6px 0;">Exporta o importa toda la base de datos (Danzarines, Cobros en hojas separadas y Asistencias por fecha) en formato Excel profesional.</p>
+          <button class="btn btn-excel" onclick="exportarExcelProfesional()">📊 Exportar Todo a Excel (.xlsx)</button>
+          <label style="margin-top:10px;">Importar Archivo Excel (.xlsx):</label>
+          <input type="file" id="inputImportarExcelAdmin" accept=".xlsx,.xls" style="margin-top:5px; font-size:11px; padding:6px;">
+          <button class="btn btn-excel-outline" onclick="importarExcelProfesional('inputImportarExcelAdmin')">⬆️ Importar Datos desde Excel</button>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>💾 Copia de Seguridad (JSON)</h3></div>
+          <button class="btn btn-success" onclick="exportarBackupJSON()">⬇️ Exportar Base de Datos (JSON)</button>
+          <label style="margin-top:10px;">Restaurar Copia de Seguridad:</label>
+          <input type="file" id="inputImportarJSON" accept=".json" style="margin-top:5px;">
+          <button class="btn btn-warning" onclick="importarBackupJSON()">⬆️ Cargar Backup</button>
+        </div>
+        <div class="card"><button class="btn btn-danger" onclick="cerrarSesionJefa()">Cerrar Sesión Administración</button></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- NAVEGACIÓN INFERIOR -->
+  <nav class="nav-bottom">
+    <button class="nav-item active" id="navBtnAsistencia" onclick="switchTab('asistencia', this)"><span class="nav-icon">📋</span><span>Asistencia</span></button>
+    <button class="nav-item" id="navBtnCobros" onclick="switchTab('cobros', this)"><span class="nav-icon">💵</span><span>Cobros</span></button>
+    <button class="nav-item" id="navBtnReportes" onclick="switchTab('reportes', this)"><span class="nav-icon">📊</span><span>Ranking</span></button>
+    <button class="nav-item" id="navBtnAdmin" onclick="switchTab('admin', this)"><span class="nav-icon">👑</span><span>Jefa / Config</span></button>
+  </nav>
+
+  <!-- MODAL CRENDENCIAL / CARNET CON QR -->
+  <div id="modalCarnetCredencial" class="modal">
+    <div class="modal-content" style="max-width: 380px; padding: 20px; text-align: center; background: #fff5f7; border: 2px solid var(--primary);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <span style="font-size: 11px; font-weight: 800; color: var(--primary-dark); text-transform: uppercase;">🪪 Credencial Oficial con QR</span>
+        <button onclick="cerrarModalCarnetCredencial()" style="background: none; border: none; font-size: 18px; font-weight: bold; cursor: pointer; color: #be185d;">✕</button>
+      </div>
+
+      <div id="carnetImprimibleBox" style="background: white; border-radius: 16px; padding: 18px; border: 3px solid var(--primary); box-shadow: 0 8px 20px rgba(236, 72, 153, 0.2); text-align: center; position: relative; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; border-bottom: 2px solid #fce7f3; padding-bottom: 8px;">
+          <img id="carnetHeaderLogo" src="" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+          <div>
+            <h4 style="margin: 0; font-size: 14px; font-weight: 900; color: #be185d; letter-spacing: 0.5px;">BLOQUE MOVIMAS</h4>
+            <p style="margin: 0; font-size: 9px; font-weight: 700; color: #8b5cf6; text-transform: uppercase;">Danzarina Oficial 2026</p>
+          </div>
+        </div>
+
+        <div style="margin: 10px 0;">
+          <div style="width: 85px; height: 85px; border-radius: 50%; overflow: hidden; margin: 0 auto; border: 3px solid var(--primary); background: #fce7f3;">
+            <img id="carnetFotoImg" src="" style="width: 100%; height: 100%; object-fit: cover;">
+          </div>
+        </div>
+
+        <h3 id="carnetNombreTxt" style="margin: 6px 0 2px 0; font-size: 16px; font-weight: 900; color: #1f2937;">Nombre Danzarina</h3>
+        <p id="carnetPuestoTxt" style="margin: 0 0 10px 0; font-size: 11px; font-weight: 800; color: var(--primary);">Puesto N° 1 • C.I.: 000000</p>
+
+        <div style="background: #fff5f7; padding: 10px; border-radius: 10px; border: 1px dashed #fbcfe8; display: inline-block; margin-top: 4px;">
+          <img id="carnetQrImg" src="" alt="Código QR" style="width: 110px; height: 110px; display: block; margin: 0 auto; border-radius: 6px;">
+          <span style="font-size: 8px; color: #64748b; font-weight: bold; display: block; margin-top: 4px;">Escanea para validar kárdex</span>
+        </div>
+
+        <div style="margin-top: 10px; font-size: 9px; color: #9d174d; font-weight: bold; border-top: 1px solid #fce7f3; pt: 6px;">
+          ✨ Fe y Tradición • Movimas 2026 ✨
+        </div>
+      </div>
+
+      <input type="hidden" id="carnetChicaIdHidden">
+      <div style="display: flex; gap: 6px; flex-direction: column;">
+        <button class="btn btn-primary" onclick="imprimirCarnetIndividual()">🖨️ Imprimir Carnet</button>
+        <button class="btn btn-whatsapp" onclick="enviarCarnetWhatsApp()">📱 Enviar Credencial por WhatsApp</button>
+        <button class="btn btn-secondary" onclick="cerrarModalCarnetCredencial()" style="background: #94a3b8; margin-top: 4px;">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL VINCULAR CARNET -->
+  <div id="modalVincularCarnet" class="modal">
+    <div class="modal-content" style="padding: 20px;">
+      <h3 style="color:var(--primary-dark); margin-top:0;">📝 Vincular mi Carnet (C.I.)</h3>
+      <label>1. Selecciona tu Nombre:</label>
+      <select id="selectChicaVincular"></select>
+      <label>2. Tu N° de Carnet (C.I.):</label>
+      <input type="text" id="inputNuevoCarnetVincular" placeholder="Ej: 8547210">
+      <button class="btn btn-primary" onclick="guardarVinculacionCarnet()">Guardar C.I. e Ingresar</button>
+      <button class="btn btn-secondary" onclick="cerrarModalVincularCarnet()" style="background:#94a3b8;">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- MODAL EDITAR PERFIL -->
+  <div id="modalEditarCarnet" class="modal">
+    <div class="modal-content" style="padding: 20px;">
+      <h3 style="color:var(--primary-dark); margin-top:0;">✏️ Editar Perfil de Danzarina</h3>
+      <input type="hidden" id="hiddenIdEditarCarnet">
+
+      <label>Nombre Completo:</label>
+      <input type="text" id="inputEditarNombreVal" placeholder="Nombre y Apellido">
+
+      <label>📷 Foto de Perfil:</label>
+      <div class="photo-upload-box" style="justify-content: center; flex-direction: column; text-align: center;">
+        <img id="previewFotoEditar" src="" class="photo-preview-circle" style="width: 72px; height: 72px;" alt="Foto">
+        <input type="file" id="inputFotoEditar" accept="image/*" onchange="procesarFotoSubida(this, 'previewFotoEditar', 'editar')" style="padding: 6px; font-size: 11px;">
+      </div>
+
+      <label>Número de Carnet (C.I.):</label>
+      <input type="text" id="inputEditarCarnetVal" placeholder="Ej: 12345678">
+
+      <label>Celular / WhatsApp:</label>
+      <input type="text" id="inputEditarCelularVal" placeholder="Ej: 71234567">
+
+      <label>Años de Antigüedad:</label>
+      <input type="number" id="inputEditarAntiguedadVal" placeholder="0" min="0" value="0">
+
+      <button class="btn btn-primary" onclick="guardarEdicionCarnet()">Guardar Cambios</button>
+      <button class="btn btn-secondary" onclick="cerrarModalEditarCarnet()" style="background:#94a3b8;">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- MODAL CALENDARIO -->
+  <div id="modalCalendarioPublico" class="modal">
+    <div class="modal-content" style="text-align: left; position: relative; max-width: 440px; padding: 20px;">
+      <button onclick="cerrarModalCalendarioPublico()" style="position: absolute; right: 15px; top: 15px; background: none; border: none; font-size: 20px; font-weight: bold; cursor: pointer; color: #be185d;">✕</button>
+      <h3 style="color: var(--primary-dark); margin-top: 0; margin-bottom: 8px;">📅 Calendario de Ensayos y Recorridos</h3>
+      <div class="subtabs" style="margin-bottom: 10px;">
+        <button class="subtab active" id="btnCalGrid" onclick="cambiarVistaCalendario('grid')">🗓️ Cuadrícula Mensual</button>
+        <button class="subtab" id="btnCalList" onclick="cambiarVistaCalendario('list')">📋 Lista Cronológica</button>
+      </div>
+      <div id="contenedorCalendarioCuadricula">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <button onclick="cambiarMesCalendario(-1)" style="background: var(--primary); color: white; border: none; padding: 4px 10px; border-radius: 6px; cursor: pointer;">◀</button>
+          <span id="txtMesAnioCalendario" style="font-size: 12px; font-weight: 900; color: var(--primary-dark);">Noviembre 2026</span>
+          <button onclick="cambiarMesCalendario(1)" style="background: var(--primary); color: white; border: none; padding: 4px 10px; border-radius: 6px; cursor: pointer;">▶</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 10px; font-weight: 800; color: #9d174d; background: #fff5f7; padding: 6px 0; border-radius: 6px; margin-bottom: 4px;">
+          <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;" id="gridDiasMes"></div>
+      </div>
+      <div id="contenedorCalendarioLista" style="display: none; font-size: 12px; max-height: 280px; overflow-y: auto; flex-direction: column; gap: 8px;"></div>
+      <button class="btn btn-primary" onclick="cerrarModalCalendarioPublico()" style="margin-top: 15px;">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- MODAL ÁLBUM -->
+  <div id="modalAlbumMultimedia" class="modal">
+    <div class="modal-content" style="text-align: left; position: relative; max-width: 440px; padding: 20px;">
+      <button onclick="cerrarAlbumMultimedia()" style="position: absolute; right: 15px; top: 15px; background: none; border: none; font-size: 20px; font-weight: bold; cursor: pointer; color: #be185d;">✕</button>
+      <h3 style="color: var(--primary-dark); margin-top: 0; margin-bottom: 4px;">📸 Álbum Multimedia Comunitario</h3>
+      <div class="subtabs" style="margin-bottom: 10px;">
+        <button class="subtab active" id="btnTabGaleria" onclick="switchSubTabAlbum('galeria')">🖼️ Ver Galería</button>
+        <button class="subtab" id="btnTabSubir" onclick="switchSubTabAlbum('subir')">➕ Subir Archivo</button>
+      </div>
+      <div id="subAlbumGaleria" style="display: block;">
+        <select id="filtroCategoriaMedia" onchange="renderizarGaleriaMedia()" style="padding: 6px; font-size: 11px; margin-bottom: 8px;">
+          <option value="todos">📂 Todas las categorías</option>
+          <option value="ensayo">🟢 Ensayos</option>
+          <option value="recorrido">🟣 Recorridos</option>
+          <option value="detras">⭐ Detrás de cámaras</option>
+        </select>
+        <div id="contenedorMediaGrid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-height: 270px; overflow-y: auto;"></div>
+      </div>
+      <div id="subAlbumSubir" style="display: none;">
+        <div id="infoUsuarioSubidaMedia" style="background: #fce7f3; border: 1px solid #fbcfe8; color: #9d174d; padding: 8px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; margin-bottom: 8px; display: none;"></div>
+        
+        <div id="boxSelectChicaMediaSubida">
+          <label>Selecciona tu Nombre:</label>
+          <select id="selectChicaMediaSubida"></select>
+        </div>
+
+        <label>Categoría:</label>
+        <select id="selectCategoriaSubida">
+          <option value="ensayo">🟢 Ensayo</option>
+          <option value="recorrido">🟣 Recorrido Oficial</option>
+          <option value="detras">⭐ Detrás de cámaras</option>
+        </select>
+        <label>Selecciona Foto o Video:</label>
+        <input type="file" id="inputArchivoMedia" accept="image/*,video/*" style="padding: 6px; font-size: 11px;">
+        <button class="btn btn-primary" onclick="subirArchivoMedia()">Subir al Álbum</button>
+      </div>
+      <button class="btn btn-secondary" onclick="cerrarAlbumMultimedia()" style="margin-top: 15px; background: #94a3b8;">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- MODAL PUESTOS PÚBLICO -->
+  <div id="modalPuestosPublico" class="modal">
+    <div class="modal-content" style="text-align: left; position: relative; max-width: 420px; padding: 20px;">
+      <button onclick="cerrarModalPuestosPublico()" style="position: absolute; right: 15px; top: 15px; background: none; border: none; font-size: 20px; font-weight: bold; cursor: pointer; color: #be185d;">✕</button>
+      <h3 style="color: var(--primary-dark); margin-top: 0;">💃 Formación de Puestos de Baile</h3>
+      <label>Ver en filas de:</label>
+      <select id="selectTipoFilaPublico" onchange="renderVistaPuestosPublico()" style="padding: 7px; font-size: 12px; margin-bottom: 8px;">
+        <option value="4">4 danzarinas</option><option value="5">5 danzarinas</option><option value="6">6 danzarinas</option><option value="7">7 danzarinas</option><option value="8">8 danzarinas</option>
+      </select>
+      <div id="vistaPuestosPublicoContainer" style="font-size: 12px; max-height: 260px; overflow-y: auto; margin-top: 6px;"></div>
+      <button class="btn btn-whatsapp" onclick="compartirPuestosComoImagen(true)" style="margin-top: 10px;">📸 Compartir Imagen al WhatsApp</button>
+      <button class="btn btn-primary" onclick="cerrarModalPuestosPublico()" style="margin-top: 8px;">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- MODAL FRATERNO -->
+  <div id="modalFraterno" class="modal">
+    <div class="modal-content" style="overflow: hidden; border-radius: 24px; padding: 0; display: flex; flex-direction: column; max-height: 90vh;">
+      <div style="background: linear-gradient(135deg, #be185d, #9d174d); color: white; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <span style="font-size: 9px; font-weight: 700; color: #fbcfe8; text-transform: uppercase;">Kárdex Fraterno Oficial</span>
+          <h3 id="fraternoNombre" style="margin: 2px 0 0 0; font-size: 17px; font-weight: 900;">Danzarina</h3>
+        </div>
+        <button onclick="cerrarModalFraterno()" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 30px; height: 30px; border-radius: 50%; font-size: 15px; font-weight: bold; cursor: pointer;">✕</button>
+      </div>
+      <div style="padding: 16px; overflow-y: auto; background: #ffffff; flex: 1;">
+        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px; background: #fff5f7; padding: 12px; border-radius: 14px; border: 1px solid #fbcfe8;">
+          <div style="width: 75px; height: 75px; background: #be185d; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 3px solid #ec4899; flex-shrink: 0;">
+            <img id="fraternoImg" src="" alt="Foto" style="width:100%; height:100%; object-fit:cover;">
+          </div>
+          <div style="flex: 1;">
+            <div style="font-size: 10px; font-weight: 800; color: #9d174d; text-transform: uppercase;">Puesto en el Bloque</div>
+            <div id="fraternoCodigo" style="font-size: 14px; font-weight: 800; color: var(--primary-dark); margin-bottom: 4px;">N° 1</div>
+            <button onclick="abrirCarnetDigitalDesdeFraterno()" class="btn btn-secondary" style="margin:0; padding:4px 8px; font-size:10px;">🪪 Ver Carnet QR</button>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+          <div style="background: #fdf2f8; border: 1px solid #fbcfe8; padding: 10px; border-radius: 12px; text-align: center;">
+            <div id="fraternoPuntosTotales" style="font-size: 18px; font-weight: 900; color: #be185d;">0 pts</div>
+            <div style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-top: 2px;">Puntos Totales</div>
+          </div>
+          <div style="background: #fdf2f8; border: 1px solid #fbcfe8; padding: 10px; border-radius: 12px; text-align: center;">
+            <div id="fraternoRanking" style="font-size: 18px; font-weight: 900; color: var(--secondary);">#1</div>
+            <div style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-top: 2px;">Ranking General</div>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
+          <div style="border-bottom: 1px solid #fce7f3; padding-bottom: 5px;"><span style="font-size: 9px; font-weight: 800; color: #9d174d; text-transform: uppercase; display: block;">Carnet (C.I.)</span><strong id="fraternoCarnet">Sin registrar</strong></div>
+          <div style="border-bottom: 1px solid #fce7f3; padding-bottom: 5px;"><span style="font-size: 9px; font-weight: 800; color: #9d174d; text-transform: uppercase; display: block;">Antigüedad</span><strong id="fraternoAntiguedadTxt">0 años</strong></div>
+          <div style="border-bottom: 1px solid #fce7f3; padding-bottom: 5px;"><span style="font-size: 9px; font-weight: 800; color: #9d174d; text-transform: uppercase; display: block;">Celular / WhatsApp</span><strong id="fraternoCelular">Sin registrar</strong></div>
+          <div>
+            <span style="font-size: 9px; font-weight: 800; color: #9d174d; text-transform: uppercase; display: block; margin-bottom: 3px;">Estado de Cuentas</span>
+            <div id="fraternoDeudasBox" style="background: #fff5f7; padding: 8px; border-radius: 8px; border: 1px dashed #fbcfe8;"><p style="color: #64748b; margin: 0; font-size: 11px;">Sin deudas.</p></div>
+          </div>
+          <div>
+            <span style="font-size: 9px; font-weight: 800; color: #9d174d; text-transform: uppercase; display: block; margin-bottom: 3px;">Kárdex Detallado</span>
+            <div id="fraternoKardexLista" style="background: #fff5f7; padding: 8px; border-radius: 8px; border: 1px dashed #fbcfe8; max-height: 110px; overflow-y: auto;"><p style="color: #64748b; margin: 0; font-size: 11px;">Sin registros.</p></div>
+          </div>
+        </div>
+      </div>
+      <div style="padding: 12px 18px; background: #fff5f7; border-top: 1px solid #fbcfe8; text-align: center;">
+        <button class="btn btn-primary" onclick="cerrarModalFraterno()" style="margin: 0; padding: 10px;">Cerrar Kárdex</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CLAVE -->
+  <div id="modalClave" class="modal">
+    <div class="modal-content" style="padding: 20px;">
+      <h3>Ingresar Clave de Jefa</h3>
+      <input type="password" id="claveInput" placeholder="Introduce la contraseña" onkeyup="if(event.key==='Enter') verificarClave()">
+      <button class="btn btn-primary" onclick="verificarClave()">Ingresar</button>
+      <button class="btn btn-secondary" onclick="cerrarModalClave()" style="background:#94a3b8;">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- MODAL CONSULTA FRATERNO EXTERNO -->
+  <div id="modalAccesoFraterno" class="modal">
+    <div class="modal-content" style="padding: 20px;">
+      <h3 style="color:var(--primary-dark); margin-top:0;">🔗 Consultar Kárdex por C.I.</h3>
+      <label>Ingresa tu número de Carnet (C.I.):</label>
+      <input type="text" id="inputCarnetConsulta" placeholder="Ej: 1001" onkeyup="if(event.key==='Enter') verificarCarnetFraterno()">
+      <button class="btn btn-primary" onclick="verificarCarnetFraterno()">Ver Mi Kárdex</button>
+      <button class="btn btn-secondary" onclick="cerrarModalAccesoFraterno()" style="background:#94a3b8;">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- MODAL CONFIRMAR BORRADO -->
+  <div id="modalConfirmarBorrado" class="modal">
+    <div class="modal-content" style="padding: 20px;">
+      <h3 style="color:var(--danger); margin-top:0;">⚠️ Confirmar Acción</h3>
+      <p style="font-size:12px; color:#64748b;">¿Deseas borrar todo el historial?</p>
+      <button class="btn btn-danger" onclick="confirmarLimpiarHistorial()">Sí, Borrar Historial</button>
+      <button class="btn btn-secondary" onclick="cerrarModalConfirmarBorrado()" style="background:#94a3b8;">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- MODAL CONFIRMAR RETIRO -->
+  <div id="modalConfirmarRetiro" class="modal">
+    <div class="modal-content" style="padding: 20px;">
+      <h3 style="color:var(--danger); margin-top:0;">❌ Retiro Definitivo</h3>
+      <p id="lblTextoRetiro" style="font-size:12px; color:#64748b;"></p>
+      <input type="hidden" id="hiddenIdRetiroChica">
+      <button class="btn btn-danger" onclick="ejecutarRetiroDefinitivo()">Sí, Retirar para Siempre</button>
+      <button class="btn btn-secondary" onclick="cerrarModalRetiro()" style="background:#94a3b8;">Cancelar</button>
+    </div>
+  </div>
+
+  <script>
+    const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbz6XtqHnWfZhSG6E1wtaJ42NQj4dzqnhRzmMTDZQaEqxcaMQwuMiG99C8paLvlnz2QAxw/exec";
+    const IMGBB_API_KEY = "a5c942d34e1244c04b6489e0e12965d0";
+    const CLAVE_JEFA = "movimas7427";
+    const LOGO_DEFAULT = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23ec4899'/><text x='50' y='62' font-size='42' text-anchor='middle' fill='white' font-weight='bold'>M</text></svg>";
+    let esJefaAcceso = false;
+    let usuarioLogueado = null;
+    let fotoNuevaBase64 = "";
+    let fotoEditarBase64 = "";
+    let logoJefaBase64 = localStorage.getItem('movimas_logo_jefa') || "";
+    let calAnioActual = 2026;
+    let calMesActual = 10;
+
+    function showToast(msg, tipo = "info") {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `toast ${tipo}`;
+      toast.innerText = msg;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+
+    function procesarFotoSubida(input, previewId, modo) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_SIZE = 240;
+          let width = img.width, height = img.height;
+          if (width > height) {
+            if (width > MAX_SIZE) { height = Math.round((height * MAX_SIZE) / width); width = MAX_SIZE; }
+          } else {
+            if (height > MAX_SIZE) { width = Math.round((width * MAX_SIZE) / height); height = MAX_SIZE; }
+          }
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.78);
+          document.getElementById(previewId).src = compressed;
+          if (modo === 'nueva') fotoNuevaBase64 = compressed;
+          else fotoEditarBase64 = compressed;
+          showToast("📷 Foto optimizada.", "success");
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function procesarLogoJefaSubido(input) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_SIZE = 240;
+          let width = img.width, height = img.height;
+          if (width > height) {
+            if (width > MAX_SIZE) { height = Math.round((height * MAX_SIZE) / width); width = MAX_SIZE; }
+          } else {
+            if (height > MAX_SIZE) { width = Math.round((width * MAX_SIZE) / height); height = MAX_SIZE; }
+          }
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          logoJefaBase64 = canvas.toDataURL('image/jpeg', 0.82);
+          document.getElementById('previewLogoJefa').src = logoJefaBase64;
+          showToast("📷 Logo optimizado.", "success");
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function guardarLogoJefaOficial() {
+      if (!logoJefaBase64) { showToast("⚠️ Selecciona una imagen primero.", "warning"); return; }
+      localStorage.setItem('movimas_logo_jefa', logoJefaBase64);
+      actualizarEstadoSesionUI();
+      showToast("👑 ¡Logo oficial guardado con éxito!", "success");
+    }
+
+    let chicas = JSON.parse(localStorage.getItem('movimas_chicas')) || [
+      { id: 1, nombre: "Helen Mama", carnet: "1001", celular: "71234567", antiguedad: "1", foto: "" },
+      { id: 2, nombre: "Helen", carnet: "1002", celular: "", antiguedad: "1", foto: "" },
+      { id: 3, nombre: "Iblin", carnet: "1003", celular: "", antiguedad: "0", foto: "" },
+      { id: 4, nombre: "Jaqueline", carnet: "1004", celular: "", antiguedad: "1", foto: "" },
+      { id: 5, nombre: "Leandril Perdida", carnet: "1005", celular: "", antiguedad: "0", foto: "" },
+      { id: 6, nombre: "Andrea", carnet: "1006", celular: "", antiguedad: "2", foto: "" },
+      { id: 7, nombre: "Danel Villalobos Villalobos", carnet: "1007", celular: "", antiguedad: "1", foto: "" },
+      { id: 8, nombre: "Daniela Alberto", carnet: "1008", celular: "", antiguedad: "0", foto: "" },
+      { id: 9, nombre: "Dayanira", carnet: "1009", celular: "", antiguedad: "1", foto: "" },
+      { id: 10, nombre: "Guadalupe", carnet: "1010", celular: "", antiguedad: "1", foto: "" },
+      { id: 11, nombre: "Jhoana Nazareth Carrillo", carnet: "1011", celular: "", antiguedad: "2", foto: "" },
+      { id: 12, nombre: "Leyla", carnet: "1012", celular: "", antiguedad: "0", foto: "" },
+      { id: 13, nombre: "Lucia Erazo", carnet: "1013", celular: "", antiguedad: "1", foto: "" },
+      { id: 14, nombre: "Michelle Vasquez Vasquez", carnet: "1014", celular: "", antiguedad: "1", foto: "" },
+      { id: 15, nombre: "Paola", carnet: "1015", celular: "", antiguedad: "0", foto: "" },
+      { id: 16, nombre: "Raciel Rosario", carnet: "1016", celular: "", antiguedad: "1", foto: "" },
+      { id: 17, nombre: "Mariela Vallejos", carnet: "1017", celular: "", antiguedad: "2", foto: "" },
+      { id: 18, nombre: "Mayte", carnet: "1018", celular: "", antiguedad: "0", foto: "" },
+      { id: 19, nombre: "Sarai Antequera", carnet: "1019", celular: "", antiguedad: "1", foto: "" },
+      { id: 20, nombre: "Pilar", carnet: "1020", celular: "", antiguedad: "1", foto: "" }
+    ];
+
+    let marcajes = JSON.parse(localStorage.getItem('movimas_marcajes')) || [];
+    let actividades = JSON.parse(localStorage.getItem('movimas_actividades')) || [{ id: 101, nombre: "Cuota Mensual Bloque", monto: 50 }];
+    let pagos = JSON.parse(localStorage.getItem('movimas_pagos')) || [];
+    let eventosCalendario = JSON.parse(localStorage.getItem('movimas_eventos_cal')) || [
+      { id: 1, nombre: "Ensayo General Lunes", fecha: "2026-11-12", tipo: "ensayo", puntos: 5 },
+      { id: 2, nombre: "Recorrido Oficial", fecha: "2026-11-15", tipo: "recorrido", puntos: 20 }
+    ];
+    let galeriaMultimedia = JSON.parse(localStorage.getItem('movimas_galeria')) || [];
+    let html5QrcodeScanner = null;
+
+    function inicializarPreviewsPorDefecto() {
+      const pNueva = document.getElementById('previewFotoNueva');
+      const pEditar = document.getElementById('previewFotoEditar');
+      const pLogoJefa = document.getElementById('previewLogoJefa');
+      const fImg = document.getElementById('fraternoImg');
+      const logoActual = logoJefaBase64 || LOGO_DEFAULT;
+      if (pNueva && !pNueva.getAttribute('src')) pNueva.src = LOGO_DEFAULT;
+      if (pEditar && !pEditar.getAttribute('src')) pEditar.src = LOGO_DEFAULT;
+      if (pLogoJefa) pLogoJefa.src = logoActual;
+      if (fImg && !fImg.getAttribute('src')) fImg.src = LOGO_DEFAULT;
+    }
+
+    function cambiarModoLogin(modo) {
+      document.getElementById('tabLoginChica').classList.toggle('active', modo === 'chica');
+      document.getElementById('tabLoginJefa').classList.toggle('active', modo === 'jefa');
+      document.getElementById('formLoginChica').style.display = modo === 'chica' ? 'block' : 'none';
+      document.getElementById('formLoginJefa').style.display = modo === 'jefa' ? 'block' : 'none';
+    }
+
+    function renderChipsEjemploCarnet() {
+      const container = document.getElementById('chipsEjemploCarnet');
+      if (!container) return;
+      container.innerHTML = '';
+      chicas.filter(c => c.carnet).slice(0, 4).forEach(c => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'ci-chip';
+        chip.innerText = `${c.nombre.split(' ')[0]} (${c.carnet})`;
+        chip.onclick = () => { document.getElementById('loginCarnetInput').value = c.carnet; iniciarSesionConCarnet(); };
+        container.appendChild(chip);
+      });
+    }
+
+    function iniciarSesionConCarnet() {
+      const carnet = document.getElementById('loginCarnetInput').value.trim();
+      if (!carnet) { showToast("⚠️ Ingresa tu número de Carnet (C.I.).", "warning"); return; }
+      const chica = chicas.find(c => c.carnet && c.carnet.toLowerCase() === carnet.toLowerCase());
+      if (!chica) { showToast("❌ Carnet no encontrado.", "error"); return; }
+      usuarioLogueado = chica;
+      esJefaAcceso = false;
+      sessionStorage.setItem('movimas_sesion_carnet', chica.carnet);
+      sessionStorage.removeItem('movimas_sesion_jefa');
+      document.getElementById('sec-login').style.display = 'none';
+      switchTab('asistencia', document.getElementById('navBtnAsistencia'));
+      actualizarEstadoSesionUI();
+      showToast(`👋 ¡Bienvenida, ${chica.nombre}!`, "success");
+    }
+
+    function iniciarSesionJefaDesdeLogin() {
+      const clave = document.getElementById('loginClaveJefaInput').value.trim().toLowerCase();
+      if (clave === CLAVE_JEFA) {
+        esJefaAcceso = true;
+        usuarioLogueado = null;
+        sessionStorage.setItem('movimas_sesion_jefa', '1');
+        sessionStorage.removeItem('movimas_sesion_carnet');
+        document.getElementById('loginClaveJefaInput').value = '';
+        document.getElementById('sec-login').style.display = 'none';
+        actualizarPermisos();
+        actualizarEstadoSesionUI();
+        switchTab('admin', document.getElementById('navBtnAdmin'));
+        showToast("👑 ¡Sesión de Jefa de Bloque activada!", "success");
+      } else {
+        showToast("❌ Clave incorrecta.", "error");
+      }
+    }
+
+    function cerrarSesionGeneral() {
+      usuarioLogueado = null;
+      esJefaAcceso = false;
+      sessionStorage.removeItem('movimas_sesion_carnet');
+      sessionStorage.removeItem('movimas_sesion_jefa');
+      document.getElementById('loginCarnetInput').value = '';
+      document.getElementById('sec-login').style.display = 'flex';
+      cambiarModoLogin('chica');
+      renderChipsEjemploCarnet();
+      actualizarPermisos();
+      actualizarEstadoSesionUI();
+      showToast("🔒 Sesión cerrada.", "info");
+    }
+
+    function actualizarEstadoSesionUI() {
+      const cardBienvenida = document.getElementById('cardBienvenidaDanzarina');
+      const tituloHeader = document.getElementById('txtTituloHeader');
+      const subHeader = document.getElementById('txtSubtituloHeader');
+      const headerAvatar = document.getElementById('headerAvatarImg');
+      const loginSplash = document.getElementById('loginSplashImg');
+      const carnetHeaderLogo = document.getElementById('carnetHeaderLogo');
+      const subEnlace = document.getElementById('txtSubEnlaceFraterno');
+
+      const logoActual = logoJefaBase64 || LOGO_DEFAULT;
+      if (loginSplash) loginSplash.src = logoActual;
+      if (carnetHeaderLogo) carnetHeaderLogo.src = logoActual;
+
+      if (esJefaAcceso) {
+        cardBienvenida.style.display = 'none';
+        tituloHeader.innerText = "Sistema Movimas";
+        subHeader.innerText = "Administración - Jefa de Bloque";
+        headerAvatar.src = logoActual;
+        subEnlace.innerText = "Consulta cualquier kárdex con su número de C.I.";
+      } else if (usuarioLogueado) {
+        const actual = chicas.find(c => c.id === usuarioLogueado.id) || usuarioLogueado;
+        usuarioLogueado = actual;
+        cardBienvenida.style.display = 'block';
+        document.getElementById('bienvenidaNombre').innerText = actual.nombre;
+        document.getElementById('bienvenidaDetalle').innerText = `Puesto N° ${actual.id} • C.I.: ${actual.carnet}`;
+        document.getElementById('bienvenidaFoto').src = actual.foto || LOGO_DEFAULT;
+        headerAvatar.src = actual.foto || logoActual;
+        tituloHeader.innerText = actual.nombre;
+        subHeader.innerText = `Puesto N° ${actual.id} • C.I. ${actual.carnet}`;
+        subEnlace.innerText = "Ver mis puntos acumulados, kárdex y posición oficial";
+      } else {
+        cardBienvenida.style.display = 'none';
+        headerAvatar.src = logoActual;
+        tituloHeader.innerText = "Sistema Movimas";
+        subHeader.innerText = "Bloque Oficial de Chicas";
+      }
+    }
+
+    function abrirMiKardexLogueado() {
+      if (usuarioLogueado) abrirEnlaceFraternoPorId(usuarioLogueado.id);
+      else abrirModalAccesoFraterno();
+    }
+
+    function abrirPortalFraternoDirecto() {
+      if (usuarioLogueado && !esJefaAcceso) abrirEnlaceFraternoPorId(usuarioLogueado.id);
+      else abrirModalAccesoFraterno();
+    }
+
+    function abrirCarnetDigitalLogueada() {
+      if (usuarioLogueado) abrirModalCarnetCredencialId(usuarioLogueado.id);
+    }
+
+    function abrirCarnetDigitalDesdeFraterno() {
+      const nombreActual = document.getElementById('fraternoNombre').innerText;
+      const chica = chicas.find(c => c.nombre === nombreActual);
+      if (chica) {
+        cerrarModalFraterno();
+        abrirModalCarnetCredencialId(chica.id);
+      }
+    }
+
+    function abrirModalCarnetCredencialId(id) {
+      const chica = chicas.find(c => c.id === id);
+      if (!chica) return;
+
+      document.getElementById('carnetChicaIdHidden').value = chica.id;
+      document.getElementById('carnetFotoImg').src = chica.foto || LOGO_DEFAULT;
+      document.getElementById('carnetNombreTxt').innerText = chica.nombre;
+      document.getElementById('carnetPuestoTxt').innerText = `Puesto N° ${chica.id} • C.I.: ${chica.carnet || 'S/N'}`;
+
+      const textoQR = `MOVIMAS 2026 - Puesto N° ${chica.id} | ${chica.nombre} | C.I.: ${chica.carnet || 'S/N'}`;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(textoQR)}`;
+      document.getElementById('carnetQrImg').src = qrUrl;
+
+      document.getElementById('modalCarnetCredencial').style.display = 'flex';
+    }
+
+    function cerrarModalCarnetCredencial() {
+      document.getElementById('modalCarnetCredencial').style.display = 'none';
+    }
+
+    function imprimirCarnetIndividual() {
+      window.print();
+    }
+
+    function enviarCarnetWhatsApp() {
+      const id = parseInt(document.getElementById('carnetChicaIdHidden').value);
+      const chica = chicas.find(c => c.id === id);
+      if (!chica) return;
+
+      const celularDestino = chica.celular ? chica.celular.trim() : '';
+      const texto = `🪪 *CREDENCIAL OFICIAL - MOVIMAS 2026*\n\nHola *${chica.nombre}* 👋,\nAquí tienes los datos de tu credencial oficial:\n\n✨ *Puesto:* N° ${chica.id}\n✨ *C.I.:* ${chica.carnet || 'Sin registrar'}\n✨ *Bloque:* Movimas Oficial\n\nPreséntate a los ensayos y recorridos con tu credencial. ¡Fe y Tradición! 💃`;
+      
+      let url = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+      if (celularDestino) {
+        let celLimpio = celularDestino.replace(/\D/g, '');
+        if (celLimpio.length === 8) celLimpio = '591' + celLimpio;
+        url = `https://api.whatsapp.com/send?phone=${celLimpio}&text=${encodeURIComponent(texto)}`;
+      }
+      window.open(url, '_blank');
+    }
+
+    function abrirModalVincularCarnet() {
+      const sel = document.getElementById('selectChicaVincular');
+      sel.innerHTML = '';
+      chicas.forEach(c => {
+        sel.innerHTML += `<option value="${c.id}">N° ${c.id} - ${c.nombre} ${c.carnet ? '(C.I.: ' + c.carnet + ')' : ''}</option>`;
+      });
+      document.getElementById('inputNuevoCarnetVincular').value = '';
+      document.getElementById('modalVincularCarnet').style.display = 'flex';
+    }
+
+    function cerrarModalVincularCarnet() { document.getElementById('modalVincularCarnet').style.display = 'none'; }
+
+    function guardarVinculacionCarnet() {
+      const id = parseInt(document.getElementById('selectChicaVincular').value);
+      const nuevoCi = document.getElementById('inputNuevoCarnetVincular').value.trim();
+      if (!nuevoCi) { showToast("⚠️ Escribe tu número de Carnet (C.I.).", "warning"); return; }
+      
+      const duplicado = chicas.find(c => c.id !== id && c.carnet && c.carnet.toLowerCase() === nuevoCi.toLowerCase());
+      if (duplicado) { showToast(`⚠️ Ese C.I. ya pertenece a ${duplicado.nombre}.`, "error"); return; }
+
+      const chica = chicas.find(c => c.id === id);
+      if (chica) {
+        chica.carnet = nuevoCi;
+        sincronizarDatosNube();
+        cerrarModalVincularCarnet();
+        document.getElementById('loginCarnetInput').value = nuevoCi;
+        iniciarSesionConCarnet();
+      }
+    }
+
+    function registrarNuevaDanzarina() {
+      if (!esJefaAcceso) { solicitarAccesoJefa(); return; }
+      const nombre = document.getElementById('regNombreChica').value.trim();
+      const carnet = document.getElementById('regCarnetChica').value.trim();
+      const celular = document.getElementById('regCelularChica').value.trim();
+      const antiguedad = document.getElementById('regAntiguedadChica').value.trim() || "0";
+
+      if (!nombre || !carnet) { showToast("⚠️ Ingresa el nombre completo y el número de Carnet (C.I.).", "warning"); return; }
+      
+      const duplicado = chicas.find(c => c.carnet && c.carnet.toLowerCase() === carnet.toLowerCase());
+      if (duplicado) { showToast(`⚠️ El C.I. ${carnet} ya está registrado para ${duplicado.nombre}.`, "error"); return; }
+
+      chicas.push({
+        id: chicas.length + 1,
+        nombre, carnet, celular, antiguedad,
+        foto: fotoNuevaBase64 || ""
+      });
+
+      document.getElementById('regNombreChica').value = '';
+      document.getElementById('regCarnetChica').value = '';
+      document.getElementById('regCelularChica').value = '';
+      document.getElementById('regAntiguedadChica').value = '0';
+      document.getElementById('regFotoChica').value = '';
+      fotoNuevaBase64 = "";
+      document.getElementById('previewFotoNueva').src = LOGO_DEFAULT;
+
+      sincronizarDatosNube();
+      renderChipsEjemploCarnet();
+      showToast(`✅ ¡${nombre} registrada con éxito!`, "success");
+    }
+
+    function abrirModalRetiro(id) {
+      if (!esJefaAcceso) return;
+      const chica = chicas.find(c => c.id === id);
+      if (!chica) return;
+      document.getElementById('hiddenIdRetiroChica').value = chica.id;
+      document.getElementById('lblTextoRetiro').innerText = `¿Estás segura de retirar a ${chica.nombre} (Puesto N° ${chica.id})?`;
+      document.getElementById('modalConfirmarRetiro').style.display = 'flex';
+    }
+
+    function cerrarModalRetiro() { document.getElementById('modalConfirmarRetiro').style.display = 'none'; }
+
+    function ejecutarRetiroDefinitivo() {
+      const id = parseInt(document.getElementById('hiddenIdRetiroChica').value);
+      chicas = chicas.filter(c => c.id !== id);
+      sincronizarDatosNube();
+      cerrarModalRetiro();
+      showToast("❌ Danzarina retirada definitivamente.", "info");
+    }
+
+    function abrirModalEditarCarnet(id) {
+      if (!esJefaAcceso) return;
+      const chica = chicas.find(c => c.id === id);
+      if (!chica) return;
+      document.getElementById('hiddenIdEditarCarnet').value = chica.id;
+      document.getElementById('inputEditarNombreVal').value = chica.nombre || '';
+      document.getElementById('inputEditarCarnetVal').value = chica.carnet || '';
+      document.getElementById('inputEditarCelularVal').value = chica.celular || '';
+      document.getElementById('inputEditarAntiguedadVal').value = chica.antiguedad || '0';
+      document.getElementById('inputFotoEditar').value = '';
+      fotoEditarBase64 = chica.foto || "";
+      document.getElementById('previewFotoEditar').src = chica.foto || LOGO_DEFAULT;
+      document.getElementById('modalEditarCarnet').style.display = 'flex';
+    }
+
+    function cerrarModalEditarCarnet() { document.getElementById('modalEditarCarnet').style.display = 'none'; }
+
+    function guardarEdicionCarnet() {
+      const id = parseInt(document.getElementById('hiddenIdEditarCarnet').value);
+      const nuevoNombre = document.getElementById('inputEditarNombreVal').value.trim();
+      const nuevoCi = document.getElementById('inputEditarCarnetVal').value.trim();
+      const nuevoCel = document.getElementById('inputEditarCelularVal').value.trim();
+      const nuevaAntiguedad = document.getElementById('inputEditarAntiguedadVal').value.trim() || "0";
+      
+      if (!nuevoNombre) { showToast("⚠️ El nombre no puede estar vacío.", "warning"); return; }
+      if (!nuevoCi) { showToast("⚠️ El C.I. no puede estar vacío.", "warning"); return; }
+
+      const duplicado = chicas.find(c => c.id !== id && c.carnet && c.carnet.toLowerCase() === nuevoCi.toLowerCase());
+      if (duplicado) { showToast(`⚠️ Ese C.I. ya pertenece a ${duplicado.nombre}.`, "error"); return; }
+
+      const chica = chicas.find(c => c.id === id);
+      if (chica) {
+        chica.nombre = nuevoNombre;
+        chica.carnet = nuevoCi;
+        chica.celular = nuevoCel;
+        chica.antiguedad = nuevaAntiguedad;
+        chica.foto = fotoEditarBase64;
+        sincronizarDatosNube();
+        renderChipsEjemploCarnet();
+        cerrarModalEditarCarnet();
+        showToast("✅ Nombre, perfil y datos actualizados correctamente.", "success");
+      }
+    }
+
+    // SINCRONIZACIÓN CON GOOGLE SHEETS
+    function sincronizarDatosNube() {
+      const mapaNuevoId = {};
+      chicas.forEach((ch, idx) => {
+        const nuevoId = idx + 1;
+        mapaNuevoId[ch.id] = nuevoId;
+        ch.id = nuevoId;
+      });
+      marcajes.forEach(m => { if (mapaNuevoId[m.chicaId]) m.chicaId = mapaNuevoId[m.chicaId]; });
+      pagos.forEach(p => { if (mapaNuevoId[p.chicaId]) p.chicaId = mapaNuevoId[p.chicaId]; });
+
+      try {
+        localStorage.setItem('movimas_chicas', JSON.stringify(chicas));
+        localStorage.setItem('movimas_marcajes', JSON.stringify(marcajes));
+        localStorage.setItem('movimas_actividades', JSON.stringify(actividades));
+        localStorage.setItem('movimas_pagos', JSON.stringify(pagos));
+        localStorage.setItem('movimas_eventos_cal', JSON.stringify(eventosCalendario));
+        localStorage.setItem('movimas_galeria', JSON.stringify(galeriaMultimedia));
+      } catch (err) {
+        showToast("⚠️ Almacenamiento local lleno.", "warning");
+      }
+
+      if (URL_GOOGLE_SHEETS) {
+        fetch(URL_GOOGLE_SHEETS, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tipo: "sincronizar",
+            chicas, marcajes, actividades, pagos, eventosCalendario, galeriaMultimedia
+          })
+        }).catch(err => console.log("Error al sincronizar con la nube:", err));
+      }
+
+      render();
+    }
+
+    function cambiarPosicionDirecta(indexActual, nuevoPuestoStr) {
+      if (!esJefaAcceso) return;
+      const nuevoPuesto = parseInt(nuevoPuestoStr) - 1;
+      if (isNaN(nuevoPuesto) || nuevoPuesto < 0 || nuevoPuesto >= chicas.length) return;
+      const itemMovido = chicas.splice(indexActual, 1)[0];
+      chicas.splice(nuevoPuesto, 0, itemMovido);
+      sincronizarDatosNube();
+      showToast(`✅ Posición actualizada a N° ${nuevoPuesto + 1}`, "success");
+    }
+
+    function agregarEventoCalendario() {
+      if (!esJefaAcceso) { solicitarAccesoJefa(); return; }
+      const nombre = document.getElementById('calNombreEvento').value.trim();
+      const tipo = document.getElementById('calTipoEvento').value;
+      const fecha = document.getElementById('calFechaEvento').value;
+      const puntos = parseInt(document.getElementById('calPuntosEvento').value);
+      if (!nombre || !fecha || isNaN(puntos)) { showToast("⚠️ Completa todos los campos del evento.", "warning"); return; }
+
+      eventosCalendario.push({ id: Date.now(), nombre, tipo, fecha, puntos });
+      document.getElementById('calNombreEvento').value = '';
+      document.getElementById('calFechaEvento').value = '';
+      document.getElementById('calPuntosEvento').value = '';
+      sincronizarDatosNube();
+      showToast("✅ Evento añadido.", "success");
+    }
+
+    function eliminarEventoCalendario(id) {
+      if (!esJefaAcceso) return;
+      eventosCalendario = eventosCalendario.filter(e => e.id !== id);
+      sincronizarDatosNube();
+      showToast("🗑️ Evento eliminado.", "info");
+    }
+
+    function renderEventosAdmin() {
+      const contenedor = document.getElementById('listaEventosConfigurados');
+      if (!contenedor) return;
+      contenedor.innerHTML = '';
+      if (eventosCalendario.length === 0) { contenedor.innerHTML = '<p style="color:#64748b; font-size:11px;">No hay eventos.</p>'; return; }
+      eventosCalendario.forEach(ev => {
+        contenedor.innerHTML += `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #fbcfe8; font-size:11px;">
+            <div><b>${ev.nombre}</b> (${ev.fecha}) - <b>+${ev.puntos} pts</b></div>
+            <button style="background:var(--danger); color:white; border:none; padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="eliminarEventoCalendario(${ev.id})">🗑️</button>
+          </div>
+        `;
+      });
+    }
+
+    function cambiarVistaCalendario(vista) {
+      const btnGrid = document.getElementById('btnCalGrid');
+      const btnList = document.getElementById('btnCalList');
+      const boxGrid = document.getElementById('contenedorCalendarioCuadricula');
+      const boxList = document.getElementById('contenedorCalendarioLista');
+      if (vista === 'grid') {
+        btnGrid.classList.add('active'); btnList.classList.remove('active');
+        boxGrid.style.display = 'block'; boxList.style.display = 'none';
+        renderizarCuadriculaMes();
+      } else {
+        btnList.classList.add('active'); btnGrid.classList.remove('active');
+        boxGrid.style.display = 'none'; boxList.style.display = 'flex';
+        renderizarListaCalendario();
+      }
+    }
+
+    function cambiarMesCalendario(delta) {
+      calMesActual += delta;
+      if (calMesActual > 11) { calMesActual = 0; calAnioActual++; }
+      else if (calMesActual < 0) { calMesActual = 11; calAnioActual--; }
+      renderizarCuadriculaMes();
+    }
+
+    function renderizarCuadriculaMes() {
+      const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+      document.getElementById('txtMesAnioCalendario').innerText = `${nombresMeses[calMesActual]} ${calAnioActual}`;
+      const gridContainer = document.getElementById('gridDiasMes');
+      gridContainer.innerHTML = '';
+      const primerDia = new Date(calAnioActual, calMesActual, 1);
+      const ultimoDia = new Date(calAnioActual, calMesActual + 1, 0);
+      let inicio = primerDia.getDay() - 1; if (inicio === -1) inicio = 6;
+      for (let i = 0; i < inicio; i++) gridContainer.innerHTML += `<div style="background:transparent;"></div>`;
+      for (let d = 1; d <= ultimoDia.getDate(); d++) {
+        const fechaIso = `${calAnioActual}-${String(calMesActual + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const evs = eventosCalendario.filter(e => e.fecha === fechaIso);
+        let evHtml = '';
+        evs.forEach(e => { evHtml += `<div style="font-size:7px; background:#dcfce7; color:#15803d; border-radius:3px; padding:1px; overflow:hidden; text-overflow:ellipsis;">${e.nombre}</div>`; });
+        gridContainer.innerHTML += `<div style="min-height:46px; background:#fdf2f8; border:1px solid #fbcfe8; border-radius:6px; padding:2px;"><div style="font-weight:bold; font-size:9px;">${d}</div>${evHtml}</div>`;
+      }
+    }
+
+    function renderizarListaCalendario() {
+      const contenedor = document.getElementById('contenedorCalendarioLista');
+      contenedor.innerHTML = '';
+      if (eventosCalendario.length === 0) { contenedor.innerHTML = '<p style="color:#64748b;">No hay eventos.</p>'; return; }
+      [...eventosCalendario].sort((a,b) => new Date(a.fecha) - new Date(b.fecha)).forEach(ev => {
+        contenedor.innerHTML += `
+          <div style="background:#fff5f7; border:1px solid var(--border); padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+            <div><b>${ev.nombre}</b><br><span style="font-size:10px; color:#64748b;">📅 ${ev.fecha}</span></div>
+            <span style="font-weight:bold; color:var(--primary);">+${ev.puntos} pts</span>
+          </div>
+        `;
+      });
+    }
+
+    function abrirSeccionCalendarioPublico() {
+      cambiarVistaCalendario('grid');
+      document.getElementById('modalCalendarioPublico').style.display = 'flex';
+    }
+    function cerrarModalCalendarioPublico() { document.getElementById('modalCalendarioPublico').style.display = 'none'; }
+
+    function abrirAlbumMultimediaPublico() {
+      const sel = document.getElementById('selectChicaMediaSubida');
+      const boxSelect = document.getElementById('boxSelectChicaMediaSubida');
+      const infoBox = document.getElementById('infoUsuarioSubidaMedia');
+
+      sel.innerHTML = '';
+      chicas.forEach(c => { sel.innerHTML += `<option value="${c.nombre}">N° ${c.id} - ${c.nombre}</option>`; });
+
+      if (esJefaAcceso) {
+        boxSelect.style.display = 'none';
+        infoBox.style.display = 'block';
+        infoBox.innerHTML = '👑 Publicando como: <b>Jefa de Bloque</b>';
+      } else if (usuarioLogueado) {
+        boxSelect.style.display = 'none';
+        infoBox.style.display = 'block';
+        infoBox.innerHTML = `💃 Publicando como: <b>${usuarioLogueado.nombre}</b>`;
+      } else {
+        boxSelect.style.display = 'block';
+        infoBox.style.display = 'none';
+      }
+
+      switchSubTabAlbum('galeria');
+      renderizarGaleriaMedia();
+      document.getElementById('modalAlbumMultimedia').style.display = 'flex';
+    }
+    function cerrarAlbumMultimedia() { document.getElementById('modalAlbumMultimedia').style.display = 'none'; }
+
+    function switchSubTabAlbum(sub) {
+      document.getElementById('btnTabGaleria').classList.toggle('active', sub === 'galeria');
+      document.getElementById('btnTabSubir').classList.toggle('active', sub === 'subir');
+      document.getElementById('subAlbumGaleria').style.display = sub === 'galeria' ? 'block' : 'none';
+      document.getElementById('subAlbumSubir').style.display = sub === 'subir' ? 'block' : 'none';
+      if (sub === 'galeria') renderizarGaleriaMedia();
+    }
+
+    // SUBIR FOTO AUTOMÁTICAMENTE A IMGBB
+    function subirArchivoMedia() {
+      let nombre = "";
+      if (esJefaAcceso) {
+        nombre = "👑 Jefa de Bloque";
+      } else if (usuarioLogueado) {
+        nombre = usuarioLogueado.nombre;
+      } else {
+        nombre = document.getElementById('selectChicaMediaSubida').value;
+      }
+
+      const categoria = document.getElementById('selectCategoriaSubida').value;
+      const input = document.getElementById('inputArchivoMedia');
+      if (!input.files || !input.files[0]) { showToast("⚠️ Selecciona un archivo.", "warning"); return; }
+      
+      const file = input.files[0];
+      showToast("⏳ Subiendo imagen a la nube...", "info");
+
+      const formData = new FormData();
+      formData.append("image", file);
+
+      fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        method: "POST",
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success) {
+          const imageUrl = data.data.url;
+          galeriaMultimedia.push({ 
+            id: Date.now(), 
+            nombre, 
+            categoria, 
+            tipo: file.type.startsWith('video') ? 'video' : 'imagen', 
+            url: imageUrl, 
+            fecha: new Date().toLocaleDateString() 
+          });
+          sincronizarDatosNube();
+          input.value = '';
+          showToast("✅ ¡Foto subida a la nube con éxito!", "success");
+          switchSubTabAlbum('galeria');
+        } else {
+          showToast("❌ Error al subir a ImgBB.", "error");
+        }
+      })
+      .catch(err => {
+        showToast("❌ Error de conexión al subir.", "error");
+      });
+    }
+
+    function renderizarGaleriaMedia() {
+      const filtro = document.getElementById('filtroCategoriaMedia').value;
+      const contenedor = document.getElementById('contenedorMediaGrid');
+      contenedor.innerHTML = '';
+      const filtrados = filtro === 'todos' ? galeriaMultimedia : galeriaMultimedia.filter(m => m.categoria === filtro);
+      if (filtrados.length === 0) { contenedor.innerHTML = '<p style="color:#64748b; grid-column:span 2; text-align:center;">No hay archivos.</p>'; return; }
+      filtrados.reverse().forEach(m => {
+        let visual = `<img src="${m.url}" style="width:100%; height:110px; object-fit:cover; background:#000;" loading="lazy">`;
+        if (m.tipo === 'video') visual = `<video src="${m.url}" style="width:100%; height:110px; object-fit:cover; background:#000;" controls></video>`;
+        let adminBtn = esJefaAcceso ? `<button class="btn btn-danger" style="padding:2px; font-size:9px; margin-top:2px;" onclick="eliminarMedia(${m.id})">🗑️ Eliminar</button>` : '';
+        contenedor.innerHTML += `
+          <div style="background:#fff5f7; border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+            ${visual}
+            <div style="padding:6px; font-size:10px;"><b>👤 ${m.nombre}</b><br>${adminBtn}</div>
+          </div>
+        `;
+      });
+    }
+
+    function eliminarMedia(id) {
+      if (!esJefaAcceso) return;
+      galeriaMultimedia = galeriaMultimedia.filter(m => m.id !== id);
+      sincronizarDatosNube();
+      renderizarGaleriaMedia();
+      showToast("🗑️ Archivo eliminado.", "info");
+    }
+
+    function procesarRegistroAsistencia(eventoId, chicaId, estado) {
+      const evento = eventosCalendario.find(e => e.id == eventoId);
+      const chica = chicas.find(c => c.id == chicaId);
+      if (!evento || !chica) return;
+      let puntos = estado === 'ASISTIO' ? evento.puntos : (estado === 'PERMISO' ? Math.round(evento.puntos / 2) : 0);
+      marcajes.push({ id: Date.now(), chicaId: parseInt(chicaId), eventoId: parseInt(eventoId), eventoNombre: evento.nombre, estado, puntos, fechaHora: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) });
+      sincronizarDatosNube();
+      showToast(`✅ ${chica.nombre}: ${estado} (+${puntos} pts)`, "success");
+    }
+
+    function guardarAsistenciaDesdeInicio() {
+      if (!esJefaAcceso) { solicitarAccesoJefa(); return; }
+      procesarRegistroAsistencia(document.getElementById('selectEventoInicio').value, document.getElementById('selectChicaInicio').value, document.getElementById('selectEstadoInicio').value);
+    }
+
+    function generarHTMLFilas(tamFila) {
+      let html = '', filaNum = 1;
+      for (let i = 0; i < chicas.length; i += tamFila) {
+        const grupo = chicas.slice(i, i + tamFila);
+        html += `<div style="background:#fff5f7; border:1px solid var(--border); padding:8px; border-radius:8px; margin-bottom:8px;">`;
+        html += `<p style="margin:0 0 6px 0; font-size:11px; font-weight:bold; color:var(--primary-dark);">Fila ${filaNum}:</p>`;
+        html += `<div class="fila-scroll-wrapper"><div style="display:grid; grid-template-columns: repeat(${tamFila}, minmax(62px, 1fr)); gap:5px; min-width: ${tamFila * 65}px;">`;
+        grupo.forEach(ch => {
+          html += `<div style="background:white; padding:6px 4px; border-radius:8px; text-align:center; font-size:9px; border:1px solid #fbcfe8;">
+            <img src="${ch.foto || LOGO_DEFAULT}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border:1px solid var(--primary);"><br>
+            <b>N° ${ch.id}</b><br><span style="white-space:nowrap;">${ch.nombre.split(' ')[0]}</span>
+          </div>`;
+        });
+        html += `</div></div></div>`;
+        filaNum++;
+      }
+      return html;
+    }
+
+    function renderPuestosAdmin() {
+      const tamFila = parseInt(document.getElementById('selectTipoFila').value) || 4;
+      document.getElementById('contenedorFilasAdmin').innerHTML = generarHTMLFilas(tamFila);
+    }
+
+    function renderVistaPuestosPublico() {
+      const tamFila = parseInt(document.getElementById('selectTipoFilaPublico').value) || 4;
+      document.getElementById('vistaPuestosPublicoContainer').innerHTML = generarHTMLFilas(tamFila);
+    }
+
+    function abrirSeccionPuestosPublico() {
+      document.getElementById('selectTipoFilaPublico').value = document.getElementById('selectTipoFila').value;
+      renderVistaPuestosPublico();
+      document.getElementById('modalPuestosPublico').style.display = 'flex';
+    }
+    function cerrarModalPuestosPublico() { document.getElementById('modalPuestosPublico').style.display = 'none'; }
+
+    function compartirPuestosWhatsAppTexto() {
+      const tamFila = parseInt(document.getElementById('selectTipoFila').value) || 4;
+      let texto = `💃 *FORMACIÓN DE PUESTOS - MOVIMAS* 💃\n\n`;
+      let filaNum = 1;
+      for (let i = 0; i < chicas.length; i += tamFila) {
+        texto += `*Fila ${filaNum}:* ` + chicas.slice(i, i + tamFila).map(ch => `${ch.id}. ${ch.nombre}`).join(' | ') + `\n`;
+        filaNum++;
+      }
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank');
+    }
+
+    function abrirModalAccesoFraterno() { document.getElementById('inputCarnetConsulta').value = ''; document.getElementById('modalAccesoFraterno').style.display = 'flex'; }
+    function cerrarModalAccesoFraterno() { document.getElementById('modalAccesoFraterno').style.display = 'none'; }
+
+    function verificarCarnetFraterno() {
+      const ci = document.getElementById('inputCarnetConsulta').value.trim();
+      const chica = chicas.find(c => c.carnet && c.carnet.toLowerCase() === ci.toLowerCase());
+      if (!chica) { showToast("❌ C.I. no encontrado.", "error"); return; }
+      cerrarModalAccesoFraterno();
+      abrirEnlaceFraternoPorId(chica.id);
+    }
+
+    function renderDirectorioOrdenado() {
+      const filtro = (document.getElementById('busquedaDirectorio') ? document.getElementById('busquedaDirectorio').value : '').toLowerCase();
+      const tabla = document.getElementById('tablaDirectorioOrdenado');
+      if (!tabla) return;
+      tabla.innerHTML = '';
+      chicas.map((c, originalIndex) => ({ ...c, originalIndex })).filter(c => c.nombre.toLowerCase().includes(filtro) || (c.carnet && c.carnet.toLowerCase().includes(filtro))).forEach(c => {
+        let options = '';
+        for (let p = 1; p <= chicas.length; p++) options += `<option value="${p}" ${p === (c.originalIndex + 1) ? 'selected' : ''}>Puesto ${p}</option>`;
+        tabla.innerHTML += `
+          <tr>
+            <td>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <img src="${c.foto || LOGO_DEFAULT}" class="avatar-mini" alt="Foto">
+                <div><b>N° ${c.id} - ${c.nombre}</b><br><span style="font-size:10px; color:#be185d; font-weight:700;">C.I: ${c.carnet || 'S/N'}</span></div>
+              </div>
+            </td>
+            <td><select style="padding:4px; font-size:11px;" onchange="cambiarPosicionDirecta(${c.originalIndex}, this.value)">${options}</select></td>
+            <td>
+              <div style="display:flex; gap:3px; flex-direction:column;">
+                <button class="btn btn-secondary" style="padding:3px; font-size:9px; margin:0;" onclick="abrirModalEditarCarnet(${c.id})">📷 Editar</button>
+                <button class="btn btn-success" style="padding:3px; font-size:9px; margin:0;" onclick="abrirModalCarnetCredencialId(${c.id})">🪪 Carnet QR</button>
+                <button class="btn btn-danger" style="padding:3px; font-size:9px; margin:0;" onclick="abrirModalRetiro(${c.id})">❌ Retirar</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function abrirEnlaceFraternoPorId(id) {
+      const chica = chicas.find(c => c.id == id);
+      if (!chica) return;
+      document.getElementById('fraternoImg').src = chica.foto || LOGO_DEFAULT;
+      document.getElementById('fraternoNombre').innerText = chica.nombre;
+      document.getElementById('fraternoCodigo').innerText = `N° ${chica.id}`;
+      document.getElementById('fraternoCarnet').innerText = chica.carnet || 'Sin registrar';
+      document.getElementById('fraternoCelular').innerText = chica.celular || 'Sin registrar';
+
+      const ant = parseInt(chica.antiguedad) || 0;
+      const ptsAnt = ant * 100;
+      const ptsAsist = marcajes.filter(m => m.chicaId == chica.id).reduce((s, m) => s + (m.puntos || 0), 0);
+      document.getElementById('fraternoPuntosTotales').innerText = `${ptsAnt + ptsAsist} pts`;
+      document.getElementById('fraternoAntiguedadTxt').innerText = `${ant} años (${ptsAnt} pts)`;
+
+      const ranking = chicas.map(ch => ({ id: ch.id, pts: (parseInt(ch.antiguedad)||0)*100 + marcajes.filter(m => m.chicaId == ch.id).reduce((s,m)=>s+(m.puntos||0),0) })).sort((a,b)=>b.pts-a.pts);
+      document.getElementById('fraternoRanking').innerText = `#${ranking.findIndex(r => r.id == chica.id) + 1}`;
+
+      const deudasBox = document.getElementById('fraternoDeudasBox');
+      deudasBox.innerHTML = '';
+      if (actividades.length === 0) deudasBox.innerHTML = '<p style="color:#64748b; margin:0; font-size:11px;">Sin deudas.</p>';
+      else {
+        actividades.forEach(act => {
+          const pagado = pagos.filter(p => p.actividadId == act.id && p.chicaId == chica.id).reduce((s, p) => s + p.monto, 0);
+          const saldo = act.monto - pagado;
+          deudasBox.innerHTML += `<div style="display:flex; justify-content:space-between; font-size:11px; margin:2px 0;"><span>${act.nombre}</span><b style="color:${saldo > 0 ? 'var(--danger)' : 'var(--success)'};">${saldo > 0 ? 'Bs. ' + saldo : 'PAGADO'}</b></div>`;
+        });
+      }
+
+      const kardexLista = document.getElementById('fraternoKardexLista');
+      kardexLista.innerHTML = '';
+      const mis = marcajes.filter(m => m.chicaId == chica.id).reverse();
+      if (mis.length === 0) kardexLista.innerHTML = '<p style="color:#64748b; margin:0; font-size:11px;">Sin kárdex.</p>';
+      else {
+        mis.forEach(m => {
+          kardexLista.innerHTML += `<div style="display:flex; justify-content:space-between; margin:2px 0; font-size:11px;"><span>📅 ${m.eventoNombre}</span><b style="color:var(--success);">${m.estado} (+${m.puntos}pts)</b></div>`;
+        });
+      }
+
+      document.getElementById('modalFraterno').style.display = 'flex';
+    }
+
+    function cerrarModalFraterno() { document.getElementById('modalFraterno').style.display = 'none'; }
+
+    function exportarBackupJSON() {
+      const blob = new Blob([JSON.stringify({ chicas, marcajes, actividades, pagos, eventosCalendario, galeriaMultimedia }, null, 2)], { type: "application/json" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `backup_movimas.json`; a.click();
+      showToast("⬇️ Backup descargado.", "success");
+    }
+
+    function importarBackupJSON() {
+      if (!esJefaAcceso) { solicitarAccesoJefa(); return; }
+      const input = document.getElementById('inputImportarJSON');
+      if (!input.files.length) { showToast("⚠️ Selecciona un archivo .json", "warning"); return; }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imp = JSON.parse(e.target.result);
+          if (imp.chicas) {
+            chicas = imp.chicas; marcajes = imp.marcajes || []; actividades = imp.actividades || []; pagos = imp.pagos || []; eventosCalendario = imp.eventosCalendario || []; galeriaMultimedia = imp.galeriaMultimedia || [];
+            sincronizarDatosNube();
+            showToast("✅ Backup restaurado.", "success");
+          }
+        } catch (err) { showToast("❌ Error al leer JSON.", "error"); }
+      };
+      reader.readAsText(input.files[0]);
+    }
+
+    function renderReportes() {
+      const filtro = (document.getElementById('filtroReporteAsistencia') ? document.getElementById('filtroReporteAsistencia').value : '').toLowerCase();
+      const tabla = document.getElementById('tablaHistorialMarcajes');
+      if (!tabla) return;
+      tabla.innerHTML = '';
+      marcajes.filter(m => m.fechaHora.toLowerCase().includes(filtro) || (chicas.find(c => c.id === m.chicaId)?.nombre || '').toLowerCase().includes(filtro)).reverse().forEach(m => {
+        const ch = chicas.find(c => c.id === m.chicaId);
+        tabla.innerHTML += `<tr><td><b>${m.eventoNombre}</b><br><span style="font-size:9px; color:#64748b;">${m.fechaHora}</span></td><td><b>${ch ? ch.nombre : ''}</b></td><td><b style="color:var(--success);">${m.estado} (+${m.puntos}pts)</b></td></tr>`;
+      });
+    }
+
+    function exportarExcelProfesional() {
+      if (!esJefaAcceso) { solicitarAccesoJefa(); return; }
+      if (typeof XLSX === 'undefined') { showToast("⚠️ No se cargó la librería de Excel.", "error"); return; }
+
+      try {
+        const wb = XLSX.utils.book_new();
+        const fechaReporte = new Date().toLocaleDateString('es-BO');
+
+        const headersDanz = [
+          "N° Puesto", "Nombre Completo", "Carnet (C.I.)", "Celular / WhatsApp",
+          "Antigüedad (Años)", "Pts Antigüedad", "Asistencias", "Permisos", "Faltas",
+          "Pts Asistencias", "Puntos Totales", "Semáforo",
+          "Total Cobros (Bs.)", "Total Pagado (Bs.)", "Deuda Total (Bs.)", "Estado Financiero"
+        ];
+        const dataDanz = [
+          ["SISTEMA MOVIMAS 2026 - LISTA OFICIAL DE DANZARINES"],
+          [`Fecha de exportación: ${fechaReporte} | Total Integrantes: ${chicas.length}`],
+          [],
+          headersDanz
+        ];
+
+        let totCobrosBloque = 0, totPagadoBloque = 0, totDeudaBloque = 0;
+
+        chicas.forEach(ch => {
+          const ant = parseInt(ch.antiguedad) || 0;
+          const ptsAnt = ant * 100;
+          const misMarcajes = marcajes.filter(m => m.chicaId == ch.id);
+          const cantAsist = misMarcajes.filter(m => m.estado === 'ASISTIO').length;
+          const cantPerm = misMarcajes.filter(m => m.estado === 'PERMISO').length;
+          const cantFalta = misMarcajes.filter(m => m.estado === 'FALTA').length;
+          const ptsAsist = misMarcajes.reduce((s, m) => s + (m.puntos || 0), 0);
+          const ptsTot = ptsAnt + ptsAsist;
+          const semTxt = ptsTot >= 150 ? "EXCELENTE" : (ptsTot >= 80 ? "REGULAR" : "REQUIERE ATENCIÓN");
+
+          let espChica = 0, pagChica = 0;
+          actividades.forEach(act => {
+            espChica += act.monto;
+            pagChica += pagos.filter(p => p.actividadId == act.id && p.chicaId == ch.id).reduce((s, p) => s + p.monto, 0);
+          });
+          const debChica = Math.max(0, espChica - pagChica);
+          totCobrosBloque += espChica;
+          totPagadoBloque += pagChica;
+          totDeudaBloque += debChica;
+
+          dataDanz.push([
+            ch.id, ch.nombre, ch.carnet || "", ch.celular || "",
+            ant, ptsAnt, cantAsist, cantPerm, cantFalta,
+            ptsAsist, ptsTot, semTxt,
+            espChica, pagChica, debChica,
+            debChica <= 0 ? "AL DÍA" : `DEBE Bs. ${debChica.toFixed(2)}`
+          ]);
+        });
+
+        dataDanz.push([
+          "", "TOTALES GENERALES", "", "", "", "", "", "", "", "", "", "",
+          totCobrosBloque, totPagadoBloque, totDeudaBloque,
+          totDeudaBloque <= 0 ? "100% RECAUDADO" : "SALDO PENDIENTE"
+        ]);
+
+        const wsDanz = XLSX.utils.aoa_to_sheet(dataDanz);
+        XLSX.utils.book_append_sheet(wb, wsDanz, "1. Lista de Danzarines");
+
+        const fechaArchivo = new Date().toISOString().slice(0, 10);
+        XLSX.writeFile(wb, `Movimas_Reporte_Integral_${fechaArchivo}.xlsx`);
+        showToast("📊 ¡Excel integral descargado con éxito!", "success");
+      } catch (err) {
+        showToast("❌ Error al exportar Excel: " + err.message, "error");
+      }
+    }
+
+    function importarExcelProfesional(inputId) {
+      if (!esJefaAcceso) { solicitarAccesoJefa(); return; }
+      if (typeof XLSX === 'undefined') { showToast("⚠️ Librería Excel no disponible.", "error"); return; }
+      const input = document.getElementById(inputId);
+      if (!input || !input.files || !input.files[0]) { showToast("⚠️ Selecciona un archivo Excel (.xlsx).", "warning"); return; }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, { type: 'array' });
+          const hojaDanzName = wb.SheetNames[0];
+          if (hojaDanzName) {
+            const rowsDanz = XLSX.utils.sheet_to_json(wb.Sheets[hojaDanzName], { header: 1, defval: "" });
+            let headerIdx = rowsDanz.findIndex(r => r.some(cell => String(cell).toLowerCase().includes("nombre")));
+            if (headerIdx !== -1) {
+              const hdr = rowsDanz[headerIdx].map(h => String(h).toLowerCase().trim());
+              const colNom = hdr.findIndex(h => h.includes("nombre"));
+              const colCi = hdr.findIndex(h => h.includes("carnet") || h.includes("c.i"));
+              const colCel = hdr.findIndex(h => h.includes("celular"));
+              const colAnt = hdr.findIndex(h => h.includes("antig"));
+
+              let nuevasChicas = [];
+              for (let i = headerIdx + 1; i < rowsDanz.length; i++) {
+                const r = rowsDanz[i];
+                const nombre = colNom !== -1 ? String(r[colNom] || "").trim() : "";
+                if (!nombre || nombre.toUpperCase().includes("TOTAL")) continue;
+
+                const carnet = colCi !== -1 ? String(r[colCi] || "").trim() : "";
+                const celular = colCel !== -1 ? String(r[colCel] || "").trim() : "";
+                const antiguedad = colAnt !== -1 ? String(parseInt(r[colAnt]) || 0) : "0";
+                const existente = chicas.find(c => (carnet && c.carnet === carnet) || c.nombre.toLowerCase() === nombre.toLowerCase());
+
+                nuevasChicas.push({
+                  id: nuevasChicas.length + 1,
+                  nombre,
+                  carnet: carnet || (existente ? existente.carnet : String(1000 + nuevasChicas.length + 1)),
+                  celular: celular || (existente ? existente.celular : ""),
+                  antiguedad,
+                  foto: existente ? existente.foto : ""
+                });
+              }
+              if (nuevasChicas.length > 0) {
+                chicas = nuevasChicas;
+                sincronizarDatosNube();
+                showToast("✅ Excel importado y sincronizado correctamente.", "success");
+              }
+            }
+          }
+        } catch (err) {
+          showToast("❌ Error al leer el archivo Excel.", "error");
+        }
+      };
+      reader.readAsArrayBuffer(input.files[0]);
+    }
+
+    function abrirModalConfirmarBorrado() { if (!esJefaAcceso) { solicitarAccesoJefa(); return; } document.getElementById('modalConfirmarBorrado').style.display = 'flex'; }
+    function cerrarModalConfirmarBorrado() { document.getElementById('modalConfirmarBorrado').style.display = 'none'; }
+    function confirmarLimpiarHistorial() { marcajes = []; sincronizarDatosNube(); cerrarModalConfirmarBorrado(); showToast("🗑️ Historial vaciado.", "info"); }
+
+    function obtenerEstadoSemaforo(pts) {
+      if (pts >= 150) return { texto: '🟢 Excelente', clase: 'semaforo-verde' };
+      if (pts >= 80) return { texto: '🟡 Regular', clase: 'semaforo-amarillo' };
+      return { texto: '🔴 Requiere Atención', clase: 'semaforo-rojo' };
+    }
+
+    function renderRankingSemaforo() {
+      const filtro = (document.getElementById('busquedaRanking') ? document.getElementById('busquedaRanking').value : '').toLowerCase();
+      const tabla = document.getElementById('tablaRankingSemaforo');
+      if (!tabla) return;
+      tabla.innerHTML = '';
+      chicas.map(c => ({ ...c, totalPts: ((parseInt(c.antiguedad)||0)*100) + marcajes.filter(m => m.chicaId == c.id).reduce((s,m)=>s+(m.puntos||0),0) })).sort((a,b)=>b.totalPts-a.totalPts).filter(c=>c.nombre.toLowerCase().includes(filtro)).forEach((c, idx) => {
+        const sem = obtenerEstadoSemaforo(c.totalPts);
+        tabla.innerHTML += `<tr><td><b>#${idx + 1} - ${c.nombre}</b></td><td style="font-weight:bold; color:var(--primary);">${c.totalPts} pts</td><td><span class="semaforo-badge ${sem.clase}">${sem.texto}</span></td></tr>`;
+      });
+    }
+
+    function crearNuevaActividad() {
+      if (!esJefaAcceso) { solicitarAccesoJefa(); return; }
+      const nombre = document.getElementById('nuevoNombreActividad').value.trim();
+      const monto = parseFloat(document.getElementById('nuevoMontoActividad').value);
+      if (!nombre || isNaN(monto) || monto <= 0) { showToast("⚠️ Datos incorrectos.", "warning"); return; }
+      actividades.push({ id: Date.now(), nombre, monto });
+      sincronizarDatosNube();
+      document.getElementById('nuevoNombreActividad').value = '';
+      document.getElementById('nuevoMontoActividad').value = '';
+      showToast("✅ Cobro habilitado.", "success");
+    }
+
+    function switchTab(tabId, el) {
+      document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      if (el) el.classList.add('active');
+      document.getElementById(`sec-${tabId}`).classList.add('active');
+    }
+
+    function switchSubTab(subId, el) {
+      if ((subId === 'crear' || subId === 'abono') && !esJefaAcceso) { solicitarAccesoJefa(); return; }
+      document.querySelectorAll('.subtab').forEach(e => e.classList.remove('active'));
+      document.querySelectorAll('.subcontent').forEach(s => s.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById(`sub-${subId}`).classList.add('active');
+    }
+
+    function solicitarAccesoJefa() {
+      if (esJefaAcceso) { switchTab('admin', document.getElementById('navBtnAdmin')); return; }
+      document.getElementById('claveInput').value = '';
+      document.getElementById('modalClave').style.display = 'flex';
+      setTimeout(() => document.getElementById('claveInput').focus(), 100);
+    }
+    function cerrarModalClave() { document.getElementById('modalClave').style.display = 'none'; }
+
+    function verificarClave() {
+      if (document.getElementById('claveInput').value.trim().toLowerCase() === CLAVE_JEFA) {
+        esJefaAcceso = true;
+        sessionStorage.setItem('movimas_sesion_jefa', '1');
+        cerrarModalClave();
+        actualizarPermisos();
+        actualizarEstadoSesionUI();
+        switchTab('admin', document.getElementById('navBtnAdmin'));
+        showToast("🔓 Modo Jefa Activado", "success");
+      } else { showToast("❌ Clave incorrecta.", "error"); }
+    }
+
+    function cerrarSesionJefa() {
+      esJefaAcceso = false;
+      sessionStorage.removeItem('movimas_sesion_jefa');
+      actualizarPermisos();
+      actualizarEstadoSesionUI();
+      switchTab('asistencia', document.getElementById('navBtnAsistencia'));
+      showToast("🔒 Modo Jefa cerrado.", "info");
+    }
+
+    function actualizarPermisos() {
+      if (esJefaAcceso) {
+        document.getElementById('badgeUsuario').innerText = '👑 Modo Jefa';
+        document.getElementById('cardAccesoAsistenciaBloqueado').style.display = 'none';
+        document.getElementById('cardControlAsistenciaInicio').style.display = 'block';
+        document.getElementById('panelJefaPermitido').style.display = 'block';
+        document.getElementById('cardBloqueoJefa').style.display = 'none';
+        document.getElementById('panelAdminReportesExtra').style.display = 'block';
+        document.getElementById('panelHistoricoAsistenciasJefa').style.display = 'block';
+        document.getElementById('tabsCobrosJefa').style.display = 'flex';
+        document.getElementById('avisoPublicoCobros').style.display = 'none';
+        if (document.getElementById('btnExportExcelCobros')) document.getElementById('btnExportExcelCobros').style.display = 'inline-block';
+      } else {
+        document.getElementById('badgeUsuario').innerText = '👤 Modo Chica';
+        document.getElementById('cardAccesoAsistenciaBloqueado').style.display = 'block';
+        document.getElementById('cardControlAsistenciaInicio').style.display = 'none';
+        document.getElementById('panelJefaPermitido').style.display = 'none';
+        document.getElementById('cardBloqueoJefa').style.display = 'block';
+        document.getElementById('panelAdminReportesExtra').style.display = 'none';
+        document.getElementById('panelHistoricoAsistenciasJefa').style.display = 'none';
+        document.getElementById('tabsCobrosJefa').style.display = 'none';
+        document.getElementById('avisoPublicoCobros').style.display = 'flex';
+        if (document.getElementById('btnExportExcelCobros')) document.getElementById('btnExportExcelCobros').style.display = 'none';
+      }
+      renderDirectorioOrdenado();
+      renderEventosAdmin();
+      renderPuestosAdmin();
+      llenarSelectsControl();
+    }
+
+    function llenarSelectsControl() {
+      const selEv = document.getElementById('selectEventoInicio');
+      const selCh = document.getElementById('selectChicaInicio');
+      if (selEv) { selEv.innerHTML = ''; eventosCalendario.forEach(e => selEv.innerHTML += `<option value="${e.id}">${e.nombre} (${e.fecha})</option>`); }
+      if (selCh) { selCh.innerHTML = ''; chicas.forEach(c => selCh.innerHTML += `<option value="${c.id}">N° ${c.id} - ${c.nombre}</option>`); }
+    }
+
+    function renderTablaEstado() {
+      const actId = document.getElementById('selectFiltroActividad').value;
+      const tabla = document.getElementById('tablaEstadoCuentas');
+      if (!tabla || !actId) return;
+      tabla.innerHTML = '';
+      const act = actividades.find(a => a.id == actId);
+      if (!act) return;
+      let tot = 0, pag = 0;
+      chicas.forEach(ch => {
+        const p = pagos.filter(x => x.actividadId == actId && x.chicaId == ch.id).reduce((s, x) => s + x.monto, 0);
+        const sal = act.monto - p;
+        tot += act.monto; pag += p;
+        tabla.innerHTML += `<tr><td><b>N° ${ch.id} - ${ch.nombre}</b></td><td style="color:var(--success);">Bs. ${p}</td><td style="color:${sal > 0 ? 'var(--danger)' : '#64748b'};">Bs. ${sal > 0 ? sal : 0}</td><td><span class="status-pill ${sal <= 0 ? 'status-paid' : 'status-pending'}">${sal <= 0 ? 'PAGADO' : 'PENDIENTE'}</span></td></tr>`;
+      });
+      document.getElementById('sumTotal').innerText = `Bs. ${tot}`;
+      document.getElementById('sumPagado').innerText = `Bs. ${pag}`;
+      document.getElementById('sumSaldo').innerText = `Bs. ${tot - pag}`;
+    }
+
+    function guardarAbono() {
+      if (!esJefaAcceso) { solicitarAccesoJefa(); return; }
+      const actId = document.getElementById('selectActividadAbono').value;
+      const chicaId = document.getElementById('selectChicaAbono').value;
+      const monto = parseFloat(document.getElementById('montoIngresado').value);
+      if (!actId || isNaN(monto) || monto <= 0) { showToast("⚠️ Ingrese un monto válido.", "warning"); return; }
+      pagos.push({ id: Date.now(), actividadId: parseInt(actId), chicaId: parseInt(chicaId), monto, fecha: new Date().toLocaleString() });
+      document.getElementById('montoIngresado').value = '';
+      sincronizarDatosNube();
+      showToast("💰 Pago registrado.", "success");
+    }
+
+    function procesarTextoQRDecodificado(txt) {
+      const matchId = txt.match(/N°\s*(\d+)/);
+      const chica = matchId ? chicas.find(c => c.id == parseInt(matchId[1])) : chicas.find(c => txt.includes(c.carnet));
+      if (chica) {
+        procesarRegistroAsistencia(document.getElementById('selectEventoInicio').value, chica.id, 'ASISTIO');
+      } else {
+        showToast("❌ QR no reconocido en el sistema.", "error");
+      }
+    }
+
+    function iniciarEscaneoQR() {
+      try {
+        if (html5QrcodeScanner) {
+          html5QrcodeScanner.clear().catch(() => {});
+        }
+        document.getElementById('reader').innerHTML = '';
+        html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }, false);
+        html5QrcodeScanner.render((txt) => {
+          html5QrcodeScanner.clear().catch(() => {});
+          procesarTextoQRDecodificado(txt);
+        }, (err) => {});
+      } catch (err) {
+        showToast("⚠️ La cámara en vivo requiere HTTPS.", "warning");
+      }
+    }
+
+    function escanearQrDesdeArchivo(input) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      const html5QrCode = new Html5Qrcode("reader");
+      html5QrCode.scanFile(file, true)
+        .then(decodedText => {
+          html5QrCode.clear();
+          procesarTextoQRDecodificado(decodedText);
+          input.value = '';
+        })
+        .catch(err => {
+          showToast("❌ No se pudo leer el QR de la imagen.", "error");
+          input.value = '';
+        });
+    }
+
+    function render() {
+      const selAbono = document.getElementById('selectChicaAbono');
+      if (selAbono) { selAbono.innerHTML = ''; chicas.forEach(c => selAbono.innerHTML += `<option value="${c.id}">N° ${c.id} - ${c.nombre}</option>`); }
+      const selFiltroAct = document.getElementById('selectFiltroActividad');
+      const selActAbono = document.getElementById('selectActividadAbono');
+      const listaCobros = document.getElementById('listaCobrosConfigurados');
+      if (selFiltroAct) selFiltroAct.innerHTML = ''; if (selActAbono) selActAbono.innerHTML = ''; if (listaCobros) listaCobros.innerHTML = '';
+      actividades.forEach(a => {
+        if (selFiltroAct) selFiltroAct.innerHTML += `<option value="${a.id}">${a.nombre} (Bs. ${a.monto})</option>`;
+        if (selActAbono) selActAbono.innerHTML += `<option value="${a.id}">${a.nombre} (Bs. ${a.monto})</option>`;
+        if (listaCobros) listaCobros.innerHTML += `<div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #fbcfe8; font-size:11px;"><span><b>${a.nombre}</b></span><b style="color:var(--primary);">Bs. ${a.monto}</b></div>`;
+      });
+      renderRankingSemaforo();
+      renderTablaEstado();
+      renderDirectorioOrdenado();
+      renderReportes();
+      renderEventosAdmin();
+      renderPuestosAdmin();
+      llenarSelectsControl();
+      actualizarEstadoSesionUI();
+    }
+
+    // CARGAR DATOS DESDE LA NUBE AL INICIAR
+    function cargarDatosDesdeNube() {
+      if (!URL_GOOGLE_SHEETS) return;
+      fetch(URL_GOOGLE_SHEETS)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.chicas && data.chicas.length > 0) {
+            chicas = data.chicas;
+            marcajes = data.marcajes || [];
+            actividades = data.actividades || [{ id: 101, nombre: "Cuota Mensual Bloque", monto: 50 }];
+            pagos = data.pagos || [];
+            eventosCalendario = data.eventosCalendario || eventosCalendario;
+            galeriaMultimedia = data.galeriaMultimedia || [];
+            render();
+            renderChipsEjemploCarnet();
+          }
+        })
+        .catch(err => console.log("Usando datos locales por defecto."));
+    }
+
+    (function restaurar() {
+      inicializarPreviewsPorDefecto();
+      renderChipsEjemploCarnet();
+      cargarDatosDesdeNube();
+      if (sessionStorage.getItem('movimas_sesion_jefa') === '1') {
+        esJefaAcceso = true; document.getElementById('sec-login').style.display = 'none';
+      } else if (sessionStorage.getItem('movimas_sesion_carnet')) {
+        const c = chicas.find(x => x.carnet === sessionStorage.getItem('movimas_sesion_carnet'));
+        if (c) { usuarioLogueado = c; document.getElementById('sec-login').style.display = 'none'; }
+      }
+      actualizarPermisos();
+      render();
+    })();
+  </script>
+</body>
+</html>
